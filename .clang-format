@@ -1,0 +1,7 @@
+Language: Cpp
+BasedOnStyle: Google
+TabWidth: 2
+AlignConsecutiveAssignments: true
+UseTab: Never
+IndentWidth: 2
+SortIncludes: false
