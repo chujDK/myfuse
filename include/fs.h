@@ -20,6 +20,7 @@ struct superblock {
   uint inodestart;  // Block number of first inode block
   uint bmapstart;   // Block number of first free map block
 };
+#define SUPERBLOCK_ID 1
 
 #define NDIRECT 10
 #define NINDIRECT1 (BSIZE / sizeof(uint))

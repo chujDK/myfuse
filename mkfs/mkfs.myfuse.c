@@ -49,7 +49,7 @@ void mkfs_log(const char* msg, ...) {
 #endif
 }
 
-void write_block(int fsfd, uint index, const char* buf) {
+void write_block_raw(int fsfd, uint index, const char* buf) {
   if (lseek(fsfd, index * BSIZE, 0) != index * BSIZE) {
     err_exit("lseek error seeking %u", index);
   }
@@ -126,10 +126,10 @@ int main(int argc, char* argv[]) {
   // write super block
   memset(data_buf, 0, sizeof(data_buf));
   memmove(data_buf, &sb, sizeof(sb));
-  write_block(fsfd, 1, data_buf);
+  write_block_raw(fsfd, 1, data_buf);
 
   for (int i = 2; i < nmeta_blocks; i++) {
-    write_block(fsfd, i, zero_buf);
+    write_block_raw(fsfd, i, zero_buf);
   }
 
   return 0;
