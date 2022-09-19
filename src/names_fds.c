@@ -1,5 +1,6 @@
 #include "names_fds.h"
 #include "block_device.h"
+#include "buf_cache.h"
 #include <malloc.h>
 
 extern struct options options;
@@ -25,6 +26,9 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
   if (state->sb.magic != FSMAGIC) {
     err_exit("disk magic not match! read %x", state->sb.magic);
   }
+
+  // block cache init
+  binit(&state->bcache);
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;

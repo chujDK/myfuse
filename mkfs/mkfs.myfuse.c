@@ -15,7 +15,7 @@
 int nbitmap;
 int ninode_blocks;  // blocks that stores the on-disk inodes
 int ninodes;        // maximum number of inodes
-const int nlog = 10 * 3;
+const int nlog = NLOG;
 int nmeta_blocks;
 int nblocks;     // sum of the data blocks
 uint disk_size;  // sum of the disk's blocks

@@ -3,6 +3,9 @@
 
 #define FSMAGIC 0x636a6673
 #define BSIZE 1024
+#define MAXOPBLOCKS 10
+#define NCACHE_BUF (MAXOPBLOCKS * 3)
+#define NLOG (MAXOPBLOCKS * 3)
 
 // Disk layout:
 // [ boot block (skip) | super block | log | inode blocks |
