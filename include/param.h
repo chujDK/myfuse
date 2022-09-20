@@ -4,10 +4,10 @@
 #include "fuse.h"
 #include "fs.h"
 #include "pthread.h"
+#include "util.h"
 #define BCACHE_HASH_SIZE 13
 
 struct myfuse_state {
-  int fsfd;
   struct superblock sb;
 };
 
@@ -15,5 +15,3 @@ struct options {
   const char* device_path;
   int show_help;
 };
-
-#define MYFUSE_STATE ((struct myfuse_state*)fuse_get_context()->private_data)

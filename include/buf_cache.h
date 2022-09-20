@@ -2,17 +2,29 @@
 #include "param.h"
 #include "pthread.h"
 
+struct bcache_buf {
+  int valid;  // has data read from disk?
+  int disk;   // does disk own buf?
+  uint blockno;
+  pthread_mutex_t lock;
+  uint refcnt;
+  struct bcache_buf* prev;
+  struct bcache_buf* next;
+  time_t timestamp;
+  u_char data[BSIZE];
+};
+
 // buffed read and write
 // Return a locked buf with the contents of the indicated block
-struct buf* bread(uint block_idx);
+struct bcache_buf* bread(uint blockno);
 
 // Write back block to disk
-void* bwrite(uint block_idx);
+void bwrite(struct bcache_buf* b);
 
 // Release a locked buffer
-void brelse(struct buf* b);
+void brelse(struct bcache_buf* b);
 
-void bpin(struct buf* b);
-void bunpin(struct buf* b);
+void bpin(struct bcache_buf* b);
+void bunpin(struct bcache_buf* b);
 
 void binit();

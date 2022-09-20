@@ -1,4 +1,8 @@
 #include "util.h"
+#ifndef FUSE_USE_VERSION
+#define FUSE_USE_VERSION 31
+#endif
+#include "fuse.h"
 
 void err_exit(const char* msg, ...) {
   char buf[128] = "\033[1;91m[-]\033[0m ";
@@ -21,4 +25,8 @@ void myfuse_log(const char* msg, ...) {
   vfprintf(stdout, buf, arg);
   va_end(arg);
 #endif
+}
+
+struct myfuse_state* get_myfuse_state() {
+  return (struct myfuse_state*)fuse_get_context()->private_data;
 }

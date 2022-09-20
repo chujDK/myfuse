@@ -6,9 +6,11 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)
 
 set(CMAKE_C_FLAGS_DEBUG "-DVERBOSE -ggdb -Og -g3")
-set(CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS_DEBUG)
+set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 set(CMAKE_C_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_RELEASE CMAKE_C_FLAGS_RELEASE)
+set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+
+enable_testing()
 
 set(DIR_SRC "${CMAKE_SOURCE_DIR}/src")
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/ ALL_SRC)
@@ -21,3 +23,4 @@ target_include_directories(myfuse_static_base PUBLIC ${FUSE3_INCLUDE_DIRS})
 target_link_libraries(myfuse PUBLIC ${FUSE3_LIBRARIES} myfuse_static_base)
 
 add_subdirectory(mkfs)
+add_subdirectory(test)
