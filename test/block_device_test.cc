@@ -15,11 +15,11 @@ struct myfuse_state* get_myfuse_state() {
 // 3. random read write
 
 TEST(block_device, read_write_test) {
-  std::array<char, BSIZE> write_buf;
-  std::array<char, BSIZE> read_buf;
+  std::array<u_char, BSIZE> write_buf;
+  std::array<u_char, BSIZE> read_buf;
 
   for (int i = 0; i < 1000; i++) {
-    for (char& c : write_buf) {
+    for (auto& c : write_buf) {
       c = std::rand() % 0x100;
     }
     int blockno = std::rand() % MAX_BLOCK_NO;

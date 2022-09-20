@@ -5,7 +5,7 @@ project(myfuse)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)
 
-set(CMAKE_C_FLAGS_DEBUG "-DVERBOSE -ggdb -Og -g3")
+set(CMAKE_C_FLAGS_DEBUG "-DVERBOSE -ggdb -O0 -g3 -Wall")
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})

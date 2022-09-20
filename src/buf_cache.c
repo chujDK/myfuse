@@ -23,7 +23,7 @@ void binit() {
   pthread_spin_init(&bcache.lock, 0);
 
   for (int i = 0; i < BCACHE_HASH_SIZE; i++) {
-    pthread_spin_init(&bcache.lock, 0);
+    pthread_spin_init(&bcache.hash[i].lock, 0);
     bcache.hash[i].head.prev = &bcache.hash[i].head;
     bcache.hash[i].head.next = &bcache.hash[i].head;
   }
@@ -109,7 +109,7 @@ struct bcache_buf* bread(uint blockno) {
 
   b = bget(blockno);
   if (!b->valid) {
-    read_block_raw(blockno, (char*)b->data);
+    read_block_raw(blockno, b->data);
     b->valid = 1;
   }
   return b;
@@ -120,7 +120,7 @@ void bwrite(struct bcache_buf* b) {
     err_exit("bwrite called with unlocked buf");
   }
 
-  write_block_raw(b->blockno, (char*)b->data);
+  write_block_raw(b->blockno, b->data);
 }
 
 void brelse(struct bcache_buf* b) {

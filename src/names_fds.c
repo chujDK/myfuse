@@ -13,7 +13,7 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
 
   block_init(options.device_path);
 
-  if (read_block_raw_nbytes(SUPERBLOCK_ID, (char *)&state->sb,
+  if (read_block_raw_nbytes(SUPERBLOCK_ID, (u_char *)&state->sb,
                             sizeof(struct superblock)) !=
       sizeof(struct superblock)) {
     err_exit("failed to read super block");

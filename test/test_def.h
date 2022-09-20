@@ -4,7 +4,9 @@
 extern "C" {
 #endif
 #include "block_device.h"
+#include "buf_cache.h"
 #include "util.h"
+#include "param.h"
 #ifdef __cplusplus
 }
 #include <unistd.h>
@@ -17,5 +19,8 @@ struct myfuse_state* get_myfuse_state();
 
 class TestEnvironment : public ::testing::Environment {
  public:
-  void SetUp() override { block_init("./disk.img"); }
+  void SetUp() override {
+    block_init("./disk.img");
+    binit();
+  }
 };
