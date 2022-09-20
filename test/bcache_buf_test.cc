@@ -21,6 +21,8 @@ std::array<bool, MAX_BLOCK_NO> wrote;
 // this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
 std::array<int, content_sum> content_blockno;
 
+const int MAX_WORKER = MAXOPBLOCKS;
+
 struct start_to_end {
   int start;
   int end;
@@ -40,13 +42,26 @@ void* test_write_worker(void* _range) {
     EXPECT_EQ(wrote[blockno], false);
     wrote[blockno] = true;
   }
+  free(_range);
+  return nullptr;
+}
+
+void* test_read_worker(void*) {
+  int read_times = content_sum / MAX_WORKER;
+  for (int i = 0; i < read_times; i++) {
+    int blockno = content_blockno[std::rand() % content_sum];
+    auto b      = bread(blockno);
+    int eq      = memcmp(b->data, contents[blockno], BSIZE);
+    EXPECT_EQ(eq, 0);
+    brelse(b);
+  }
   return nullptr;
 }
 
 // test:
 // random read write block with mutiple threads
 // this test is not `unit' at all...
-TEST(bcache_buf, parallel_write_test) {
+TEST(bcache_buf, parallel_read_write_test) {
   // init the global contents
   for (int i = 0; i < MAX_BLOCK_NO; i++) {
     total_blockno[i] = i;
@@ -72,11 +87,10 @@ TEST(bcache_buf, parallel_write_test) {
     contents[i] = buf;
   }
 
-  // start {MAXOPBLOCKS} workers to write
-  const int MAX_WORKER = MAXOPBLOCKS;
+  // start {MAX_WORKER} == {MAXOPBLOCKS} workers to write
   std::array<pthread_t, MAX_WORKER> workers;
   for (int i = 0; i < MAX_WORKER; i++) {
-    auto range   = new struct start_to_end();
+    auto range   = (struct start_to_end*)malloc(sizeof(struct start_to_end));
     range->start = i * (content_sum / MAX_WORKER);
     range->end   = (i + 1) * (content_sum / MAX_WORKER);
     pthread_create(&workers[i], nullptr, test_write_worker, range);
@@ -100,6 +114,15 @@ TEST(bcache_buf, parallel_write_test) {
   myfuse_log("%.3lf memory successfully read and write",
              (content_sum - failed) / (content_sum * 1.0));
   ASSERT_EQ(failed, 0);
+
+  // parrallel_read
+  for (int i = 0; i < MAX_WORKER; i++) {
+    pthread_create(&workers[i], nullptr, test_read_worker, nullptr);
+  }
+
+  for (int i = 0; i < MAX_WORKER; i++) {
+    pthread_join(workers[i], nullptr);
+  }
 }
 
 int main(int argc, char* argv[]) {
