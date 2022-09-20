@@ -11,10 +11,14 @@ struct myfuse_state* get_myfuse_state() {
   return &state;
 }
 
-std::map<int, std::array<char, BSIZE>*> contents;
+// map blockno to it's expected content
+std::map<int, std::array<u_char, BSIZE>*> contents;
 const int content_sum = 1000;
+// this array contains [0, MAX_BLOCK_NO), and then shuffled
 std::array<int, MAX_BLOCK_NO> total_blockno;
+// this array denotes {blockno}-th block has been wrote
 std::array<bool, MAX_BLOCK_NO> wrote;
+// this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
 std::array<int, content_sum> content_blockno;
 
 void test_write_worker(int start, int end) {
@@ -26,18 +30,23 @@ void test_write_worker(int start, int end) {
     bwrite(b);
     brelse(b);
     wrote[blockno] = true;
-    myfuse_log("index: %d blockno: %d writed", i, blockno);
+    // myfuse_log("index: %d blockno: %d writed", i, blockno);
   }
 }
 
 // test:
 // random read write block with mutiple threads
+// this test is not `unit' at all...
 TEST(bcache_buf, read_write_test) {
   // init the global contents
   for (int i = 0; i < MAX_BLOCK_NO; i++) {
     total_blockno[i] = i;
   }
 
+  static_assert(content_sum < MAX_BLOCK_NO,
+                "content_sum must lower then MAX_BLOCK_NO");
+
+  int failed = 0;
   std::random_device rd;
   std::mt19937 g(rd());
   std::shuffle(total_blockno.begin(), total_blockno.end(), g);
@@ -47,8 +56,8 @@ TEST(bcache_buf, read_write_test) {
   wrote.fill(false);
 
   for (int& i : content_blockno) {
-    auto buf = new std::array<char, BSIZE>;
-    for (char& c : *buf) {
+    auto buf = new std::array<u_char, BSIZE>;
+    for (u_char& c : *buf) {
       c = std::rand() % 0x100;
     }
     contents[i] = buf;
@@ -76,9 +85,14 @@ TEST(bcache_buf, read_write_test) {
     brelse(b);
     if (eq != 0) {
       myfuse_nonfatal("read odd data in block %d", i);
+      failed++;
     }
-    EXPECT_EQ(eq, 0);
   }
+
+  myfuse_log("failed on %d blocks", failed);
+  myfuse_log("%.3lf memory successfully read and write",
+             (content_sum - failed) / (content_sum * 1.0));
+  ASSERT_EQ(failed, 0);
 }
 
 int main(int argc, char* argv[]) {

@@ -3,6 +3,7 @@
 #include "buf_cache.h"
 #include "util.h"
 #include "block_device.h"
+#include "sys/time.h"
 
 struct bcache_hashtbl {
   pthread_spinlock_t lock;
@@ -38,7 +39,7 @@ void binit() {
   }
 }
 
-static int hash(uint blockno) { return blockno % BCACHE_HASH_SIZE; }
+static uint hash(uint blockno) { return blockno % BCACHE_HASH_SIZE; }
 
 static struct bcache_buf* bget(uint blockno) {
   struct bcache_buf* b;
@@ -61,7 +62,7 @@ static struct bcache_buf* bget(uint blockno) {
 
   // Not cached.
   // Recycle all hashtbl and get the least recent buf
-  uint least_recent_time_stamp = 0;
+  uint64_t least_recent_time_stamp = 0;
   least_recent_time_stamp--;
   struct bcache_buf* least_recent_buf = 0;
   for (int hidx = 0; hidx < BCACHE_HASH_SIZE; hidx++) {
@@ -123,6 +124,14 @@ void bwrite(struct bcache_buf* b) {
   write_block_raw(b->blockno, b->data);
 }
 
+static inline uint64_t current_timestamp() {
+  struct timeval te;
+  gettimeofday(&te, NULL);  // get current time
+  long long milliseconds =
+      te.tv_sec * 100LL + te.tv_usec / 100;  // calculate milliseconds
+  return milliseconds;
+}
+
 void brelse(struct bcache_buf* b) {
   if (!pthread_mutex_trylock(&b->lock)) {
     err_exit("brelse called with unlocked buf");
@@ -137,7 +146,7 @@ void brelse(struct bcache_buf* b) {
   if (b->refcnt == 0) {
     // no one is waiting for it.
     // update timestamp
-    b->timestamp = time(NULL);
+    b->timestamp = current_timestamp();
   }
 
   pthread_spin_unlock(&bucket->lock);

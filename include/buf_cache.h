@@ -10,7 +10,7 @@ struct bcache_buf {
   uint refcnt;
   struct bcache_buf* prev;
   struct bcache_buf* next;
-  time_t timestamp;
+  uint64_t timestamp;
   u_char data[BSIZE];
 };
 
