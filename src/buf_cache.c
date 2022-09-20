@@ -3,6 +3,7 @@
 #include "buf_cache.h"
 #include "util.h"
 #include "block_device.h"
+#include "assert.h"
 #include "sys/time.h"
 
 struct bcache_hashtbl {
@@ -21,10 +22,10 @@ static struct bcache bcache;
 
 void binit() {
   struct bcache_buf* b;
-  pthread_spin_init(&bcache.lock, 0);
+  pthread_spin_init(&bcache.lock, 1);
 
   for (int i = 0; i < BCACHE_HASH_SIZE; i++) {
-    pthread_spin_init(&bcache.hash[i].lock, 0);
+    pthread_spin_init(&bcache.hash[i].lock, 1);
     bcache.hash[i].head.prev = &bcache.hash[i].head;
     bcache.hash[i].head.next = &bcache.hash[i].head;
   }
@@ -39,16 +40,19 @@ void binit() {
   }
 }
 
-static uint hash(uint blockno) { return blockno % BCACHE_HASH_SIZE; }
+static uint bcache_hash(uint blockno) { return blockno % BCACHE_HASH_SIZE; }
 
 static struct bcache_buf* bget(uint blockno) {
   struct bcache_buf* b;
 
-  int hashid                    = hash(blockno);
+  int hashid                    = bcache_hash(blockno);
   struct bcache_hashtbl* bucket = &bcache.hash[hashid];
   pthread_spin_lock(&bucket->lock);
 
   for (b = bucket->head.next; b != &bucket->head; b = b->next) {
+#ifdef DEBUG
+    assert(bcache_hash(b->blockno) == hashid);
+#endif
     if (b->blockno == blockno) {
       b->refcnt++;
       pthread_spin_unlock(&bucket->lock);
@@ -116,12 +120,12 @@ struct bcache_buf* bread(uint blockno) {
   return b;
 }
 
-void bwrite(struct bcache_buf* b) {
+int bwrite(struct bcache_buf* b) {
   if (!pthread_mutex_trylock(&b->lock)) {
     err_exit("bwrite called with unlocked buf");
   }
 
-  write_block_raw(b->blockno, b->data);
+  return write_block_raw(b->blockno, b->data);
 }
 
 static inline uint64_t current_timestamp() {
@@ -138,7 +142,7 @@ void brelse(struct bcache_buf* b) {
   }
 
   pthread_mutex_unlock(&b->lock);
-  int hashid                    = hash(b->blockno);
+  int hashid                    = bcache_hash(b->blockno);
   struct bcache_hashtbl* bucket = &bcache.hash[hashid];
   pthread_spin_lock(&bucket->lock);
 

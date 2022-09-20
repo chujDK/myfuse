@@ -19,7 +19,8 @@ struct bcache_buf {
 struct bcache_buf* bread(uint blockno);
 
 // Write back block to disk
-void bwrite(struct bcache_buf* b);
+// @return nbytes wrote [only for test]
+int bwrite(struct bcache_buf* b);
 
 // Release a locked buffer
 void brelse(struct bcache_buf* b);
