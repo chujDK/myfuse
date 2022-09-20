@@ -28,7 +28,7 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
   }
 
   // block cache init
-  binit(&state->bcache);
+  binit();
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;

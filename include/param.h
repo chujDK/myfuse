@@ -6,12 +6,9 @@
 #include "pthread.h"
 #define BCACHE_HASH_SIZE 13
 
-#include "bcache_def.h"
-
 struct myfuse_state {
   int fsfd;
   struct superblock sb;
-  struct bcache bcache;
 };
 
 struct options {
