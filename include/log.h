@@ -35,9 +35,12 @@ void log_init(struct superblock* sb);
 //   bp = loged_read()
 //   modify bp->data[]
 //   loged_write(bp)
-//   brelse(bp)
+//   loged_relse(bp)
 //
 void logged_write(struct bcache_buf* b);
 
 // this is a wrapper to bread() to make the interface consistent
 struct bcache_buf* logged_read(uint blockno);
+
+// this is a wrapper to brelse() to make the interface consistent
+void logged_relse(struct bcache_buf* b);

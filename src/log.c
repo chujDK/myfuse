@@ -175,3 +175,5 @@ void logged_write(struct bcache_buf* b) {
 struct bcache_buf* logged_read(uint blockno) {
   return bread(blockno);
 }
+
+void logged_relse(struct bcache_buf* b) { brelse(b); }
