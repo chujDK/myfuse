@@ -92,7 +92,7 @@ void begin_op() {
       pthread_cond_wait(&fslog.wakeup, &fslog.lock);
     } else {
       fslog.outstanding++;
-      pthread_mutex_lock(&fslog.lock);
+      pthread_mutex_unlock(&fslog.lock);
       break;
     }
   }
