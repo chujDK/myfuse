@@ -25,6 +25,9 @@ class TestEnvironment : public ::testing::Environment {
   }
 };
 
+const int content_sum = 1000;
+const int MAX_WORKER  = MAXOPBLOCKS;
+
 // add the following two extern define to start of the testfile
 //  // map blockno to it's expected content
 // `extern std::map<int, const u_char*> contents;'
@@ -33,5 +36,11 @@ class TestEnvironment : public ::testing::Environment {
 // `extern std::array<int, MAX_BLCOK_NO> content_blockno;'
 void generate_test_data();
 
-template <std::size_t MAX_WORKER = MAXOPBLOCKS>
-void start_worker(void* (*pthread_worker)(void*));
+void start_worker(void* (*pthread_worker)(void*), int MAXWORKER = MAX_WORKER);
+
+// indicate the range the worker need to workon
+// don't free it by the callee
+struct start_to_end {
+  int start;
+  int end;
+};

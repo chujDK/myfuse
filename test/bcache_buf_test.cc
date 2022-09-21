@@ -1,8 +1,5 @@
 #include <gtest/gtest.h>
 #include "test_def.h"
-#include <thread>
-#include <random>
-#include <algorithm>
 
 TestEnvironment* env;
 
@@ -12,21 +9,11 @@ struct myfuse_state* get_myfuse_state() {
 }
 
 // map blockno to it's expected content
-std::map<int, const u_char*> contents;
-const int content_sum = 1000;
-// this array contains [0, MAX_BLOCK_NO), and then shuffled
-std::array<int, MAX_BLOCK_NO> total_blockno;
+extern std::map<int, const u_char*> contents;
 // this array denotes {blockno}-th block has been wrote
 std::array<bool, MAX_BLOCK_NO> wrote;
 // this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
-std::array<int, content_sum> content_blockno;
-
-const int MAX_WORKER = MAXOPBLOCKS;
-
-struct start_to_end {
-  int start;
-  int end;
-};
+extern std::array<int, content_sum> content_blockno;
 
 void* test_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
@@ -42,7 +29,6 @@ void* test_write_worker(void* _range) {
     EXPECT_EQ(wrote[blockno], false);
     wrote[blockno] = true;
   }
-  free(_range);
   return nullptr;
 }
 
@@ -62,42 +48,11 @@ void* test_read_worker(void*) {
 // random read write block with mutiple threads
 // this test is not `unit' at all...
 TEST(bcache_buf, parallel_read_write_test) {
-  // init the global contents
-  for (int i = 0; i < MAX_BLOCK_NO; i++) {
-    total_blockno[i] = i;
-  }
-
-  static_assert(content_sum < MAX_BLOCK_NO,
-                "content_sum must lower then MAX_BLOCK_NO");
-
   int failed = 0;
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(total_blockno.begin(), total_blockno.end(), g);
-  std::copy(total_blockno.begin(),
-            total_blockno.begin() + content_blockno.size(),
-            content_blockno.begin());
-  wrote.fill(false);
 
-  for (int& i : content_blockno) {
-    auto buf = new u_char[BSIZE];
-    for (int i = 0; i < BSIZE; i++) {
-      buf[i] = std::rand() % 0x100;
-    }
-    contents[i] = buf;
-  }
+  generate_test_data();
 
-  // start {MAX_WORKER} == {MAXOPBLOCKS} workers to write
-  std::array<pthread_t, MAX_WORKER> workers;
-  for (int i = 0; i < MAX_WORKER; i++) {
-    auto range   = (struct start_to_end*)malloc(sizeof(struct start_to_end));
-    range->start = i * (content_sum / MAX_WORKER);
-    range->end   = (i + 1) * (content_sum / MAX_WORKER);
-    pthread_create(&workers[i], nullptr, test_write_worker, range);
-  }
-  for (pthread_t worker : workers) {
-    pthread_join(worker, nullptr);
-  }
+  start_worker(test_write_worker);
 
   // check the write
   for (int& i : content_blockno) {
@@ -115,14 +70,7 @@ TEST(bcache_buf, parallel_read_write_test) {
              (content_sum - failed) / (content_sum * 1.0));
   ASSERT_EQ(failed, 0);
 
-  // parrallel_read
-  for (int i = 0; i < MAX_WORKER; i++) {
-    pthread_create(&workers[i], nullptr, test_read_worker, nullptr);
-  }
-
-  for (int i = 0; i < MAX_WORKER; i++) {
-    pthread_join(workers[i], nullptr);
-  }
+  start_worker(test_read_worker);
 }
 
 int main(int argc, char* argv[]) {

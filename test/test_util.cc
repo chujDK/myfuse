@@ -3,7 +3,6 @@
 
 // map blockno to it's expected content
 std::map<int, const u_char*> contents;
-const int content_sum = 1000;
 // this array contains [0, MAX_BLOCK_NO), and then shuffled
 std::array<int, MAX_BLOCK_NO> total_blockno;
 // this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
@@ -34,16 +33,19 @@ void generate_test_data() {
   }
 }
 
-template <std::size_t MAX_WORKER = MAXOPBLOCKS>
-void start_worker(void* (*pthread_worker)(void*)) {
-  std::array<pthread_t, MAX_WORKER> workers;
+void start_worker(void* (*pthread_worker)(void*), int MAX_WORKER) {
+  auto workers = new pthread_t[MAX_WORKER];
+  auto ranges  = new struct start_to_end[MAX_WORKER];
   for (int i = 0; i < MAX_WORKER; i++) {
-    auto range   = (struct start_to_end*)malloc(sizeof(struct start_to_end));
+    auto range   = &ranges[i];
     range->start = i * (content_sum / MAX_WORKER);
     range->end   = (i + 1) * (content_sum / MAX_WORKER);
     pthread_create(&workers[i], nullptr, pthread_worker, range);
   }
-  for (pthread_t worker : workers) {
-    pthread_join(worker, nullptr);
+  for (int i = 0; i < MAX_WORKER; i++) {
+    pthread_join(workers[i], nullptr);
   }
+
+  delete[] workers;
+  delete[] ranges;
 }
