@@ -5,16 +5,6 @@
 
 TestEnvironment* env;
 
-struct myfuse_state* get_myfuse_state() {
-  static struct myfuse_state state;
-  return &state;
-}
-
-// map blockno to it's expected content
-extern std::map<int, u_char*> contents;
-// this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
-extern std::array<int, content_sum> content_blockno;
-
 // test:
 // 1. read block
 // 2. write block

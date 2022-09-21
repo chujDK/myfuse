@@ -44,3 +44,6 @@ struct bcache_buf* logged_read(uint blockno);
 
 // this is a wrapper to brelse() to make the interface consistent
 void logged_relse(struct bcache_buf* b);
+
+void begin_op();
+void end_op();

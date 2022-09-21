@@ -3,17 +3,9 @@
 
 TestEnvironment* env;
 
-struct myfuse_state* get_myfuse_state() {
-  static struct myfuse_state state;
-  return &state;
-}
-
 // map blockno to it's expected content
-extern std::map<int, const u_char*> contents;
 // this array denotes {blockno}-th block has been wrote
 std::array<bool, MAX_BLOCK_NO> wrote;
-// this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
-extern std::array<int, content_sum> content_blockno;
 
 void* test_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
