@@ -15,6 +15,7 @@ extern "C" {
 #endif
 
 #define MAX_BLOCK_NO 400000
+extern int nmeta_blocks;
 
 struct myfuse_state* get_myfuse_state();
 
@@ -27,12 +28,21 @@ class TestEnvironment : public ::testing::Environment {
 
     init_super_block();
 
+    nmeta_blocks = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
+    std::array<u_char, BSIZE> zeros;
+    zeros.fill(0);
+    for (int i = 0; i < nmeta_blocks; i++) {
+      write_block_raw(i, zeros.data());
+    }
+    memmove(zeros.data(), &MYFUSE_STATE->sb, sizeof(MYFUSE_STATE->sb));
+    write_block_raw(1, zeros.data());
+
     bcache_init();
     log_init(&MYFUSE_STATE->sb);
   }
 };
 
-const int content_sum = 1000;
+const int content_sum = 10000;
 const int MAX_WORKER  = MAXOPBLOCKS;
 
 // map blockno to it's expected content

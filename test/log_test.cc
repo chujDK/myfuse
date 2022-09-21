@@ -11,13 +11,17 @@ void* test_write_worker(void* _range) {
   int op    = 0;
   int in_op = 1;
   for (int i = range->start; i < range->end; i++) {
+    int blockno = content_blockno[i];
+    if (blockno < nmeta_blocks) {
+      // don't write meta block
+      continue;
+    }
     if (in_op == 0) {
       begin_op();
       in_op = 1;
     }
     op++;
     op %= (MAXOPBLOCKS - 1);
-    int blockno = content_blockno[i];
     auto b = logged_read(blockno);
     memcpy(b->data, contents[blockno], BSIZE);
     logged_write(b);
@@ -41,6 +45,9 @@ void* test_read_worker(void*) {
   int read_times = content_sum;
   for (int i = 0; i < read_times; i++) {
     int blockno = content_blockno[std::rand() % content_sum];
+    if (blockno < nmeta_blocks) {
+      continue;
+    }
     auto b      = logged_read(blockno);
     int eq      = memcmp(b->data, contents[blockno], BSIZE);
     EXPECT_EQ(eq, 0);
@@ -56,6 +63,10 @@ TEST(log_test, parallel_read_write_test) {
   int failed = 0;
   // check the write
   for (int& i : content_blockno) {
+    if (i < nmeta_blocks) {
+      ASSERT_FALSE(wrote[i]);
+      continue;
+    }
     ASSERT_TRUE(wrote[i]);
     auto b = bread(i);
     int eq = memcmp(b->data, contents[i], BSIZE);

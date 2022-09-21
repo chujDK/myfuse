@@ -8,13 +8,15 @@ std::array<int, MAX_BLOCK_NO> total_blockno;
 // this array contains {content_sum} uniq random nums in range [0, MAX_BLOCK_NO)
 std::array<int, content_sum> content_blockno;
 
+int nmeta_blocks = 0;
+
 void generate_test_data() {
   // init the global contents
   for (int i = 0; i < MAX_BLOCK_NO; i++) {
     total_blockno[i] = i;
   }
 
-  static_assert(content_sum < MAX_BLOCK_NO,
+  static_assert(content_sum <= MAX_BLOCK_NO,
                 "content_sum must lower then MAX_BLOCK_NO");
 
   std::random_device rd;
