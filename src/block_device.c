@@ -56,7 +56,7 @@ int read_block_raw_nbytes(uint block_id, u_char *buf, uint nbytes) {
   return read_block_raw_nbytes_byfd(device_fd, block_id, buf, nbytes);
 }
 
-void block_init(const char *path_to_device) {
+void block_device_init(const char *path_to_device) {
   device_fd = open(path_to_device, O_RDWR);
   if (device_fd < 0) {
     err_exit("failed to open disk %s", path_to_device);

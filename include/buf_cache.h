@@ -28,4 +28,4 @@ void brelse(struct bcache_buf* b);
 void bpin(struct bcache_buf* b);
 void bunpin(struct bcache_buf* b);
 
-void binit();
+void bcache_init();

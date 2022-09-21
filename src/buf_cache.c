@@ -20,7 +20,7 @@ struct bcache {
 
 static struct bcache bcache;
 
-void binit() {
+void bcache_init() {
   struct bcache_buf* b;
   pthread_spin_init(&bcache.lock, 1);
 

@@ -16,3 +16,8 @@ add_executable(bcache_buf_test bcache_buf_test.cc)
 target_link_libraries(bcache_buf_test PUBLIC ${GTEST_BOTH_LIBRARIES} PUBLIC ${FUSE3_LIBRARIES} myfuse_static_base)
 gtest_discover_tests(bcache_buf_test)
 
+#log_test
+add_executable(log_test log_test.cc)
+target_link_libraries(log_test PUBLIC ${GTEST_BOTH_LIBRARIES} PUBLIC ${FUSE3_LIBRARIES} myfuse_static_base)
+gtest_discover_tests(log_test)
+

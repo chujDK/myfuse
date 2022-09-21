@@ -1,6 +1,7 @@
 #include "names_fds.h"
 #include "block_device.h"
 #include "buf_cache.h"
+#include "log.h"
 #include <malloc.h>
 
 extern struct options options;
@@ -11,7 +12,7 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
     err_exit("failed to allocate memory for myfuse_state");
   }
 
-  block_init(options.device_path);
+  block_device_init(options.device_path);
 
   if (read_block_raw_nbytes(SUPERBLOCK_ID, (u_char *)&state->sb,
                             sizeof(struct superblock)) !=
@@ -24,7 +25,9 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
   }
 
   // block cache init
-  binit();
+  bcache_init();
+
+  log_init(&state->sb);
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;
