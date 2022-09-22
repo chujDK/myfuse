@@ -465,16 +465,20 @@ static size_t min(size_t a, size_t b) { return a < b ? a : b; }
 
 void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
                         size_t off) {
+  begin_op();
   ilock(ip);
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
   size_t n_left          = BSIZE - from_start;
+  uint nwrote            = 0;
   struct bcache_buf* bp  = logged_read(imap2blockno(ip, inode_block_start));
   memmove(bp->data + from_start, data, min(n_left, nbytes));
   logged_write(bp);
+  nwrote++;
   logged_relse(bp);
   if (nbytes <= n_left) {
     iunlock(ip);
+    end_op();
     return;
   }
   nbytes -= n_left;
@@ -486,9 +490,26 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
     bp = logged_read(imap2blockno(ip, inode_blockno));
     memmove(bp->data, data, BSIZE);
     logged_write(bp);
+    nwrote++;
     logged_relse(bp);
+
+    if (nwrote > MAXOPBLOCKS) {
+      // FIXME: this can't avoid log overflow
+      // and maybe will cause dead lock?
+      iunlock(ip);
+      end_op();
+      begin_op();
+      ilock(ip);
+    }
     data += BSIZE;
     inode_blockno++;
+  }
+
+  if (nwrote > MAXOPBLOCKS) {
+    iunlock(ip);
+    end_op();
+    begin_op();
+    ilock(ip);
   }
 
   // write last block
@@ -499,10 +520,13 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
     logged_relse(bp);
   }
   iunlock(ip);
+  end_op();
 }
 
 void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
                        size_t off) {
+  // read op won't cause log, so just begin and end
+  begin_op();
   ilock(ip);
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
@@ -512,6 +536,7 @@ void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
   logged_relse(bp);
   if (nbytes <= n_left) {
     iunlock(ip);
+    end_op();
     return;
   }
   nbytes -= n_left;
@@ -534,4 +559,5 @@ void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
     logged_relse(bp);
   }
   iunlock(ip);
+  end_op();
 }

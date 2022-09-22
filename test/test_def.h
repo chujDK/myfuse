@@ -57,8 +57,8 @@ extern std::map<int, const u_char*> contents;
 extern std::array<int, content_sum> content_blockno;
 void generate_block_test_data();
 
-void start_worker(void* (*pthread_worker)(void*), int MAXWORKER = MAX_WORKER,
-                  int end = content_sum);
+void start_worker(void* (*pthread_worker)(void*), uint MAXWORKER = MAX_WORKER,
+                  uint64_t end = content_sum);
 
 // indicate the range the worker need to workon
 // don't free it by the callee

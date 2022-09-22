@@ -18,10 +18,8 @@ static_assert(big_file_block < NDIRECT + NINDIRECT);
 void* block_aligned_write_worker(void* _range) {
   auto range = (start_to_end*)_range;
   for (int i = range->start; i < range->end; i++) {
-    begin_op();
     inode_write_nbytes(single_inode, &big_file_content[i * BSIZE], BSIZE,
                        i * BSIZE);
-    end_op();
   }
   return nullptr;
 }
@@ -30,16 +28,48 @@ void* block_aligned_read_worker(void*) {
   std::array<char, BSIZE> read_buf;
   for (int i = 0; i < nblock_reader_check; i++) {
     int blockno = std::rand() % big_file_block;
-    begin_op();
     inode_read_nbytes(single_inode, read_buf.data(), BSIZE, blockno * BSIZE);
-    end_op();
     int eq = memcmp(read_buf.data(), &big_file_content[blockno * BSIZE], BSIZE);
     EXPECT_EQ(eq, 0);
   }
   return nullptr;
 }
 
+int write_max_size = MAXOPBLOCKS * BSIZE;
+int read_max_size  = MAXOPBLOCKS * BSIZE;
+
+void* unaligned_random_write_worker(void* _range) {
+  auto range = (struct start_to_end*)_range;
+  for (uint i = range->start; i < range->end;) {
+    uint size = rand() % write_max_size;
+    size      = std::min(range->end - i, size);
+
+    inode_write_nbytes(single_inode, &big_file_content[i], size, i);
+    i += size;
+  }
+  return nullptr;
+}
+
+void* unaligned_random_read_worker(void* _range) {
+  auto range     = (struct start_to_end*)_range;
+  char* read_buf = new char[read_max_size];
+  for (uint i = range->start; i < range->end;) {
+    uint size = rand() % write_max_size;
+    size      = std::min(range->end - i, size);
+
+    inode_read_nbytes(single_inode, read_buf, size, i);
+
+    int eq = memcmp(read_buf, &big_file_content[i], size);
+    EXPECT_EQ(eq, 0);
+    i += size;
+  }
+  delete[] read_buf;
+  return nullptr;
+}
+
 TEST(inode, unaligned_random_read_write_test) {
+  write_max_size = MAXOPBLOCKS * BSIZE;
+  read_max_size  = MAXOPBLOCKS * BSIZE;
   begin_op();
   single_inode = ialloc(T_FILE);
   end_op();
@@ -48,38 +78,57 @@ TEST(inode, unaligned_random_read_write_test) {
     c = std::rand();
   }
 
-  for (uint i = 0; i < big_file_size;) {
-    uint size = rand() % (MAXOPBLOCKS * BSIZE);
-    size      = std::min(big_file_size - i, size);
+  start_worker(unaligned_random_write_worker, 1, big_file_size);
 
-    begin_op();
-    inode_write_nbytes(single_inode, &big_file_content[i], size, i);
-    end_op();
-    i += size;
-  }
-
-  std::array<char, MAXOPBLOCKS * BSIZE> read_buf;
-
-  for (uint i = 0; i < big_file_size;) {
-    uint size = rand() % (MAXOPBLOCKS * BSIZE);
-    size      = std::min(big_file_size - i, size);
-
-    begin_op();
-    inode_read_nbytes(single_inode, read_buf.data(), size, i);
-    end_op();
-
-    int eq = memcmp(read_buf.data(), &big_file_content[i], size);
-    EXPECT_EQ(eq, 0);
-
-    i += size;
-  }
+  start_worker(unaligned_random_read_worker, 1, big_file_size);
 
   begin_op();
   iput(single_inode);
   end_op();
 }
 
-TEST(inode, block_aligned_read_write_test) {
+TEST(inode, big_unaligned_random_read_write_test) {
+  write_max_size = MAXOPBLOCKS * 10 * BSIZE;
+  read_max_size  = MAXOPBLOCKS * 10 * BSIZE;
+  begin_op();
+  single_inode = ialloc(T_FILE);
+  end_op();
+
+  for (char& c : big_file_content) {
+    c = std::rand();
+  }
+
+  start_worker(unaligned_random_write_worker, 1, big_file_size);
+
+  start_worker(unaligned_random_read_worker, 1, big_file_size);
+
+  begin_op();
+  iput(single_inode);
+  end_op();
+}
+
+TEST(inode, parallel_big_unaligned_random_read_write_test) {
+  write_max_size = MAXOPBLOCKS * 10 * BSIZE;
+  read_max_size  = MAXOPBLOCKS * 10 * BSIZE;
+
+  begin_op();
+  single_inode = ialloc(T_FILE);
+  end_op();
+
+  for (char& c : big_file_content) {
+    c = std::rand();
+  }
+
+  start_worker(unaligned_random_write_worker, 10, big_file_size);
+
+  start_worker(unaligned_random_read_worker, 10, big_file_size);
+
+  begin_op();
+  iput(single_inode);
+  end_op();
+}
+
+TEST(inode, parrallel_block_aligned_read_write_test) {
   begin_op();
   single_inode = ialloc(T_FILE);
   end_op();
@@ -95,9 +144,7 @@ TEST(inode, block_aligned_read_write_test) {
   int failed = 0;
   // check the write
   for (uint i = 0; i < big_file_block; i++) {
-    begin_op();
     inode_read_nbytes(single_inode, read_buf.data(), BSIZE, i * BSIZE);
-    end_op();
     int eq = memcmp(read_buf.data(), &big_file_content[i * BSIZE], BSIZE);
     if (eq != 0) {
       failed++;

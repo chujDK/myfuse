@@ -39,16 +39,17 @@ void generate_block_test_data() {
   }
 }
 
-void start_worker(void* (*pthread_worker)(void*), int MAX_WORKER, int end) {
+void start_worker(void* (*pthread_worker)(void*), uint MAX_WORKER,
+                  uint64_t end) {
   auto workers = new pthread_t[MAX_WORKER];
   auto ranges  = new struct start_to_end[MAX_WORKER];
-  for (int i = 0; i < MAX_WORKER; i++) {
+  for (uint i = 0; i < MAX_WORKER; i++) {
     auto range   = &ranges[i];
     range->start = i * (end / MAX_WORKER);
     range->end   = (i + 1) * (end / MAX_WORKER);
     pthread_create(&workers[i], nullptr, pthread_worker, range);
   }
-  for (int i = 0; i < MAX_WORKER; i++) {
+  for (uint i = 0; i < MAX_WORKER; i++) {
     pthread_join(workers[i], nullptr);
   }
 
