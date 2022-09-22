@@ -133,5 +133,22 @@ int main(int argc, char* argv[]) {
     write_block_raw(fsfd, i, zero_buf);
   }
 
+  // write bitmap
+  uint nmeta_bitmap_block     = nmeta_blocks / BPB;
+  uint nmeta_bitmap_bit       = nmeta_blocks % BPB;
+  uint nmeta_bitmap_byte      = nmeta_bitmap_bit / 8;
+  uint nmeta_bitmap_left_bits = nmeta_bitmap_bit % 8;
+  uint meta_bitmap_left_byte  = 0;
+  for (int i = 0; i < nmeta_bitmap_left_bits; i++) {
+    meta_bitmap_left_byte |= (1 << i);
+  }
+  for (int i = sb.bmapstart; i < sb.bmapstart + nmeta_bitmap_block; i++) {
+    memset(data_buf, 0xFF, sizeof(data_buf));
+    write_block_raw(fsfd, i, data_buf);
+  }
+  memset(data_buf, 0xFF, nmeta_bitmap_byte);
+  data_buf[nmeta_bitmap_byte] = meta_bitmap_left_byte;
+  write_block_raw(fsfd, nmeta_bitmap_block + sb.bmapstart, data_buf);
+
   return 0;
 }

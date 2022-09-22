@@ -10,9 +10,13 @@ std::array<int, content_sum> content_blockno;
 
 int nmeta_blocks = 0;
 
-void generate_test_data() {
+void generate_block_test_data() {
   // init the global contents
-  for (int i = 0; i < MAX_BLOCK_NO; i++) {
+  for (int i = 0; i < nmeta_blocks; i++) {
+    // write 0 in test is safe (fs do not use the boot section)
+    total_blockno[i] = 0;
+  }
+  for (int i = nmeta_blocks; i < MAX_BLOCK_NO; i++) {
     total_blockno[i] = i;
   }
 
@@ -35,13 +39,13 @@ void generate_test_data() {
   }
 }
 
-void start_worker(void* (*pthread_worker)(void*), int MAX_WORKER) {
+void start_worker(void* (*pthread_worker)(void*), int MAX_WORKER, int end) {
   auto workers = new pthread_t[MAX_WORKER];
   auto ranges  = new struct start_to_end[MAX_WORKER];
   for (int i = 0; i < MAX_WORKER; i++) {
     auto range   = &ranges[i];
-    range->start = i * (content_sum / MAX_WORKER);
-    range->end   = (i + 1) * (content_sum / MAX_WORKER);
+    range->start = i * (end / MAX_WORKER);
+    range->end   = (i + 1) * (end / MAX_WORKER);
     pthread_create(&workers[i], nullptr, pthread_worker, range);
   }
   for (int i = 0; i < MAX_WORKER; i++) {

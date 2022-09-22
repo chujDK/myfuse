@@ -28,3 +28,7 @@ add_executable(log_test log_test.cc)
 target_link_libraries(log_test PUBLIC test_lib_base)
 gtest_discover_tests(log_test)
 
+#inode_test
+add_executable(inode_test inode_test.cc)
+target_link_libraries(inode_test PUBLIC test_lib_base)
+gtest_discover_tests(inode_test)

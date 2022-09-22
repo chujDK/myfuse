@@ -155,7 +155,7 @@ void logged_write(struct bcache_buf* b) {
     err_exit("too big a transaction");
   }
   if (fslog.outstanding < 1) {
-    err_exit("loged_write outside of transaction");
+    err_exit("logged_write outside of transaction");
   }
 
   int block_idx;

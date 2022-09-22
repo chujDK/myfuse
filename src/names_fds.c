@@ -2,6 +2,7 @@
 #include "block_device.h"
 #include "buf_cache.h"
 #include "log.h"
+#include "inode.h"
 #include <malloc.h>
 
 extern struct options options;
@@ -28,6 +29,8 @@ void *myfuse_init(struct fuse_conn_info *conn, struct fuse_config *config) {
   bcache_init();
 
   log_init(&state->sb);
+
+  inode_init();
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;

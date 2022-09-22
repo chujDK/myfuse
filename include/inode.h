@@ -101,3 +101,9 @@ void iupdate(struct inode* ip);
 struct inode* idup(struct inode* ip);
 
 struct inode* ialloc(short type);
+
+uint imap2blockno(struct inode* ip, uint bn);
+
+void inode_write_nbytes(struct inode* ip, const char* data, size_t bytes,
+                        size_t off);
+void inode_read_nbytes(struct inode* ip, char* data, size_t bytes, size_t off);

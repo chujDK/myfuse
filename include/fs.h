@@ -69,5 +69,5 @@ struct dirent {
 // internal used inode type
 #define T_UNUSE 0
 #define T_DIR 1
-#define T_FIEL 2
+#define T_FILE 2
 #define T_DEVICE 3

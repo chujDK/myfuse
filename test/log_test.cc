@@ -48,16 +48,23 @@ void* test_read_worker(void*) {
     if (blockno < nmeta_blocks) {
       continue;
     }
-    auto b      = logged_read(blockno);
-    int eq      = memcmp(b->data, contents[blockno], BSIZE);
+    auto b = logged_read(blockno);
+    int eq = memcmp(b->data, contents[blockno], BSIZE);
     EXPECT_EQ(eq, 0);
     logged_relse(b);
   }
   return nullptr;
 }
 
+TEST(log_test, begin_end_op_test) {
+  for (int i = 0; i < 10; i++) {
+    begin_op();
+    end_op();
+  }
+}
+
 TEST(log_test, parallel_read_write_test) {
-  generate_test_data();
+  generate_block_test_data();
   start_worker(test_write_worker, 10);
 
   int failed = 0;

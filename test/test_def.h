@@ -8,6 +8,7 @@ extern "C" {
 #include "util.h"
 #include "log.h"
 #include "param.h"
+#include "inode.h"
 #ifdef __cplusplus
 }
 #include <unistd.h>
@@ -24,6 +25,8 @@ void init_super_block();
 class TestEnvironment : public ::testing::Environment {
  public:
   void SetUp() override {
+    std::srand(std::time(nullptr));
+
     block_device_init("./disk.img");
 
     init_super_block();
@@ -39,10 +42,12 @@ class TestEnvironment : public ::testing::Environment {
 
     bcache_init();
     log_init(&MYFUSE_STATE->sb);
+
+    inode_init();
   }
 };
 
-const int content_sum = 10000;
+const int content_sum = 1000;
 const int MAX_WORKER  = MAXOPBLOCKS;
 
 // map blockno to it's expected content
@@ -50,9 +55,10 @@ extern std::map<int, const u_char*> contents;
 // this array contains {content_sum} uniq random nums in range [0,
 // MAX_BLOCK_NO)
 extern std::array<int, content_sum> content_blockno;
-void generate_test_data();
+void generate_block_test_data();
 
-void start_worker(void* (*pthread_worker)(void*), int MAXWORKER = MAX_WORKER);
+void start_worker(void* (*pthread_worker)(void*), int MAXWORKER = MAX_WORKER,
+                  int end = content_sum);
 
 // indicate the range the worker need to workon
 // don't free it by the callee

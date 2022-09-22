@@ -27,7 +27,9 @@ TEST(block_device, read_write_test) {
 }
 
 TEST(block_device, random_read_write_test) {
-  generate_test_data();
+  // write all the disk here
+  nmeta_blocks = 0;
+  generate_block_test_data();
 
   for (int& i : content_blockno) {
     int n_write = write_block_raw(i, contents[i]);
@@ -65,8 +67,11 @@ void* test_write_worker(void* _range) {
 TEST(block_device, parrallel_write_test) {
   int failed = 0;
 
-  generate_test_data();
+  // write all the disk here
+  nmeta_blocks = 0;
+  generate_block_test_data();
 
+  wrote.fill(false);
   start_worker(test_write_worker);
 
   std::array<u_char, BSIZE> read_buf;

@@ -10,6 +10,8 @@ struct {
   struct inode* inode;
 } itable;
 
+pthread_spinlock_t block_alloc_lock;
+
 int inode_init() {
   pthread_spin_init(&itable.lock, 1);
 #define NINODE_INIT 30
@@ -18,6 +20,8 @@ int inode_init() {
   for (int i = 0; i < NINODE_INIT; i++) {
     pthread_mutex_init(&itable.inode[i].lock, NULL);
   }
+
+  pthread_spin_init(&block_alloc_lock, 1);
   return 0;
 }
 
@@ -74,9 +78,10 @@ struct inode* ialloc(short type) {
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
       logged_write(bp);
+      logged_relse(bp);
       return iget(inum);
     }
-    brelse(bp);
+    logged_relse(bp);
   }
 
   // no on disk inodes avaliable
@@ -124,6 +129,7 @@ void ilock(struct inode* ip) {
 }
 
 void iunlock(struct inode* ip) {
+  // pthread_mutex_trylock: return 0 if not locked
   if (ip == 0 || !pthread_mutex_trylock(&ip->lock) || ip->ref < 1) {
     err_exit("iunlock: got invalid inode");
   }
@@ -199,22 +205,50 @@ static uint block_alloc() {
   int b, bi, m;
   struct bcache_buf* bp = 0;
 
+  static uint last_alloced = 0;
+  uint nmeta               = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
+  pthread_spin_lock(&block_alloc_lock);
+  if (last_alloced == 0) {
+    last_alloced = nmeta;
+  }
+  pthread_spin_unlock(&block_alloc_lock);
   for (b = 0; b < MYFUSE_STATE->sb.size; b += BPB) {
+    pthread_spin_lock(&block_alloc_lock);
+    if (b + BPB < last_alloced) {
+      pthread_spin_unlock(&block_alloc_lock);
+      continue;
+    }
+    pthread_spin_unlock(&block_alloc_lock);
+
     bp = logged_read(BBLOCK(b));
     for (bi = 0; bi < BPB && b + bi < MYFUSE_STATE->sb.size; bi++) {
+      pthread_spin_lock(&block_alloc_lock);
+      if (b + bi < last_alloced) {
+        pthread_spin_unlock(&block_alloc_lock);
+        continue;
+      }
+      pthread_spin_unlock(&block_alloc_lock);
+
       m = 1 << (bi % 8);
       if ((bp->data[bi / 8] & m) == 0) {  // Is block free?
         bp->data[bi / 8] |= m;            // Mark block in use.
         logged_write(bp);
         logged_relse(bp);
         zero_a_block(b + bi);
+
+        pthread_spin_lock(&block_alloc_lock);
+        last_alloced = b + bi;
+        pthread_spin_unlock(&block_alloc_lock);
+
         return b + bi;
       }
     }
     brelse(bp);
   }
-  err_exit("balloc: out of blocks");
-  return 0;
+  pthread_spin_lock(&block_alloc_lock);
+  last_alloced = nmeta;
+  pthread_spin_unlock(&block_alloc_lock);
+  return block_alloc();
 }
 
 static void block_free(uint b) {
@@ -242,7 +276,7 @@ static void block_free(uint b) {
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
-static uint imap2blockno(struct inode* ip, uint bn) {
+uint imap2blockno(struct inode* ip, uint bn) {
   uint addr, *a;
   struct bcache_buf* bp;
 
@@ -358,7 +392,9 @@ static uint imap2blockno(struct inode* ip, uint bn) {
 
 void itrunc(struct inode* ip) {
   for (int i = 0; i < NDIRECT; i++) {
-    block_free(ip->addrs[i]);
+    if (ip->addrs[i]) {
+      block_free(ip->addrs[i]);
+    }
   }
 
   if (ip->addrs[NDIRECT]) {
@@ -385,7 +421,7 @@ void itrunc(struct inode* ip) {
             block_free(a2[j]);
           }
         }
-        logged_relse(bp);
+        logged_relse(bp2);
         block_free(a[i]);
       }
     }
@@ -413,11 +449,89 @@ void itrunc(struct inode* ip) {
             block_free(a2[j]);
           }
         }
-        logged_relse(bp);
+        logged_relse(bp2);
         block_free(a[i]);
       }
     }
     logged_relse(bp);
     block_free(ip->addrs[NDIRECT + 2]);
   }
+
+  // TODO: this is unneccessary?
+  memset(ip->addrs, 0, sizeof(ip->addrs));
+}
+
+static size_t min(size_t a, size_t b) { return a < b ? a : b; }
+
+void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
+                        size_t off) {
+  ilock(ip);
+  uint inode_block_start = ((size_t)(off / BSIZE));
+  size_t from_start      = off % BSIZE;
+  size_t n_left          = BSIZE - from_start;
+  struct bcache_buf* bp  = logged_read(imap2blockno(ip, inode_block_start));
+  memmove(bp->data + from_start, data, min(n_left, nbytes));
+  logged_write(bp);
+  logged_relse(bp);
+  if (nbytes <= n_left) {
+    iunlock(ip);
+    return;
+  }
+  nbytes -= n_left;
+  data += n_left;
+
+  // start block write
+  uint inode_blockno = inode_block_start + 1;
+  for (; nbytes > BSIZE; nbytes -= BSIZE) {
+    bp = logged_read(imap2blockno(ip, inode_blockno));
+    memmove(bp->data, data, BSIZE);
+    logged_write(bp);
+    logged_relse(bp);
+    data += BSIZE;
+    inode_blockno++;
+  }
+
+  // write last block
+  if (nbytes) {
+    bp = logged_read(imap2blockno(ip, inode_blockno));
+    memmove(bp->data, data, nbytes);
+    logged_write(bp);
+    logged_relse(bp);
+  }
+  iunlock(ip);
+}
+
+void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
+                       size_t off) {
+  ilock(ip);
+  uint inode_block_start = ((size_t)(off / BSIZE));
+  size_t from_start      = off % BSIZE;
+  size_t n_left          = BSIZE - from_start;
+  struct bcache_buf* bp  = logged_read(imap2blockno(ip, inode_block_start));
+  memmove(data, bp->data + from_start, min(n_left, nbytes));
+  logged_relse(bp);
+  if (nbytes <= n_left) {
+    iunlock(ip);
+    return;
+  }
+  nbytes -= n_left;
+  data += n_left;
+
+  // start block write
+  uint inode_blockno = inode_block_start + 1;
+  for (; nbytes > BSIZE; nbytes -= BSIZE) {
+    bp = logged_read(imap2blockno(ip, inode_blockno));
+    memmove(data, bp->data, BSIZE);
+    logged_relse(bp);
+    data += BSIZE;
+    inode_blockno++;
+  }
+
+  // write last block
+  if (nbytes) {
+    bp = logged_read(imap2blockno(ip, inode_blockno));
+    memmove(data, bp->data, nbytes);
+    logged_relse(bp);
+  }
+  iunlock(ip);
 }

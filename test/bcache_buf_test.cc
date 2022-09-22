@@ -42,7 +42,9 @@ void* test_read_worker(void*) {
 TEST(bcache_buf, parallel_read_write_test) {
   int failed = 0;
 
-  generate_test_data();
+  // no need to avoid the meta blocks;
+  nmeta_blocks = 0;
+  generate_block_test_data();
 
   start_worker(test_write_worker);
 
