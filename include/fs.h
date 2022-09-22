@@ -39,6 +39,7 @@ struct superblock {
 // On-disk inode structure
 struct dinode {
   short type;              // File type
+  // currently we don't consider the device case
   short major;             // Major device number (T_DEVICE only)
   short minor;             // Minor device number (T_DEVICE only)
   short nlink;             // Number of links to inode in file system
@@ -50,13 +51,13 @@ struct dinode {
 #define IPB (BSIZE / sizeof(struct dinode))
 
 // Block containing inode i
-#define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
+#define IBLOCK(i) ((i) / IPB + MYFUSE_STATE->sb.inodestart)
 
 // Bitmap bits per block
 #define BPB (BSIZE * 8)
 
 // Block of free map containing bit for block b
-#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
+#define BBLOCK(b) ((b) / BPB + MYFUSE_STATE->sb.bmapstart)
 
 // Directory is a file containing a sequence of dirent structures
 struct dirent {
@@ -64,3 +65,9 @@ struct dirent {
 #define DIRSIZE (0x10 - sizeof(ushort))
   char name[DIRSIZE];
 };
+
+// internal used inode type
+#define T_UNUSE 0
+#define T_DIR 1
+#define T_FIEL 2
+#define T_DEVICE 3

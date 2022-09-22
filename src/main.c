@@ -3,9 +3,10 @@
 //
 
 // fs layers
-// |       names/fds     |
+// |         fd          |
+// |      path name      |
+// |      directory      |
 // |        inode        |
-// |     inode cache     |
 // |         log         |
 // |      buf cache      |
 // | disk (block device) |

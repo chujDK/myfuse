@@ -3,6 +3,7 @@
 #define FUSE_USE_VERSION 31
 #endif
 #include "fuse.h"
+#include <stdarg.h>
 
 void err_exit(const char* msg, ...) {
   char buf[128] = "\033[1;91m[-]\033[0m \033[91mmyfuse fatal error:\033[0m ";
@@ -37,6 +38,9 @@ void myfuse_nonfatal(const char* msg, ...) {
   va_end(arg);
 }
 
+#ifdef __GNUC__
+#pragma weak fuse_get_context
+#endif
 struct myfuse_state* get_myfuse_state() {
   return (struct myfuse_state*)fuse_get_context()->private_data;
 }

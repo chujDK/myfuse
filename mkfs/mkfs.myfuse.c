@@ -5,6 +5,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <stdarg.h>
 #include <sys/stat.h>
 
 #include "fs.h"
@@ -30,8 +31,8 @@ void err_exit(const char* msg, ...) {
   char buf[128] = "\033[1;91m[-]\033[0m ";
   va_list arg;
   va_start(arg, msg);
-  strncat(buf, msg, 128);
-  strncat(buf, "\n", 128);
+  strncat(buf, msg, 127);
+  strncat(buf, "\n", 127);
   vfprintf(stderr, buf, arg);
   va_end(arg);
   exit(1);
@@ -42,8 +43,8 @@ void mkfs_log(const char* msg, ...) {
   char buf[128] = "\033[1;92m[+]\033[0m ";
   va_list arg;
   va_start(arg, msg);
-  strncat(buf, msg, 128);
-  strncat(buf, "\n", 128);
+  strncat(buf, msg, 127);
+  strncat(buf, "\n", 127);
   vfprintf(stdout, buf, arg);
   va_end(arg);
 #endif
@@ -59,7 +60,7 @@ void write_block_raw(int fsfd, uint index, const char* buf) {
 }
 
 int main(int argc, char* argv[]) {
-  char disk_name[32];
+  char disk_name[16];
   char disk_attr[32];
   char user_decide[8];
   FILE* attr_file;
@@ -79,7 +80,7 @@ int main(int argc, char* argv[]) {
     err_exit("Failed to open disk");
   }
 
-  sscanf(argv[1], "/dev/%31s", disk_name);
+  sscanf(argv[1], "/dev/%15s", disk_name);
   mkfs_log("Disk name: %s", disk_name);
 
   fprintf(stderr, "This program will format the disk %s\n", disk_name);
