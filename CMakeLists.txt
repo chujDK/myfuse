@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 11)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)
 
-# set(CODECOVERAGE "-fprofile-instr-generate -fcoverage-mapping")
+set(CODECOVERAGE "-fprofile-arcs -ftest-coverage")
 
 set(CMAKE_C_FLAGS_DEBUG "${CODECOVERAGE} -DVERBOSE -DDEBUG -ggdb -O0 -g3 -Wall")
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})

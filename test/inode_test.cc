@@ -121,8 +121,6 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
 
   start_worker(unaligned_random_write_worker, 10, big_file_size);
 
-  myfuse_log("write finished");
-
   start_worker(unaligned_random_read_worker, 10, big_file_size);
 
   begin_op();
