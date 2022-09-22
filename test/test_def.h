@@ -51,7 +51,7 @@ class TestEnvironment : public ::testing::Environment {
 };
 
 const int content_sum = 1000;
-const int MAX_WORKER  = MAXOPBLOCKS;
+const int MAX_WORKER  = 10;
 
 // map blockno to it's expected content
 extern std::map<int, const u_char*> contents;

@@ -3,7 +3,7 @@
 
 #define FSMAGIC 0x636a6673
 #define BSIZE 1024
-#define MAXOPBLOCKS 10
+#define MAXOPBLOCKS 85
 #define NCACHE_BUF (MAXOPBLOCKS * 3)
 #define NLOG (MAXOPBLOCKS * 3)
 

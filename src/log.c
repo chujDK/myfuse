@@ -26,7 +26,7 @@ static void recover_from_log();
 static void commit();
 
 void log_init(struct superblock* sb) {
-  if (sizeof(struct fslogheader) >= BSIZE) {
+  if (sizeof(struct fslogheader) > BSIZE) {
     err_exit("log_init: too big logheader");
   }
 

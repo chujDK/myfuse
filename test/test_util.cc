@@ -60,21 +60,21 @@ void start_worker(void* (*pthread_worker)(void*), uint MAX_WORKER,
 void init_super_block() {
   auto sb = &MYFUSE_STATE->sb;
 
-  uint disk_size     = MAX_BLOCK_NO;
-  uint nlog          = NLOG;
-  uint nbitmap       = disk_size / (BSIZE * 8) + 1;
-  uint ninode_blocks = ceil(disk_size / 100) + 1;
-  uint ninodes       = ninode_blocks * IPB;
-  uint nmeta_blocks  = 2 + nlog + ninode_blocks + nbitmap;
-  uint nblocks       = disk_size - nmeta_blocks;
-  sb->magic          = FSMAGIC;
-  sb->ninodes        = ninodes;
-  sb->size           = disk_size;
-  sb->nblocks        = nblocks;
-  sb->nlog           = nlog;
-  sb->logstart       = 2;
-  sb->inodestart     = 2 + nlog;
-  sb->bmapstart      = 2 + nlog + ninode_blocks;
+  const uint disk_size     = MAX_BLOCK_NO;
+  const uint nlog          = NLOG;
+  const uint nbitmap       = disk_size / (BSIZE * 8) + 1;
+  const uint ninode_blocks = ceil(disk_size / 100) + 1;
+  const uint ninodes       = ninode_blocks * IPB;
+  const uint nmeta_blocks  = 2 + nlog + ninode_blocks + nbitmap;
+  const uint nblocks       = disk_size - nmeta_blocks;
+  sb->magic                = FSMAGIC;
+  sb->ninodes              = ninodes;
+  sb->size                 = disk_size;
+  sb->nblocks              = nblocks;
+  sb->nlog                 = nlog;
+  sb->logstart             = 2;
+  sb->inodestart           = 2 + nlog;
+  sb->bmapstart            = 2 + nlog + ninode_blocks;
 }
 
 struct myfuse_state* get_myfuse_state() {
