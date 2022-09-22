@@ -2,17 +2,30 @@ cmake_minimum_required(VERSION 3.22)
 
 project(myfuse)
 
+option(CodeCoverage "CodeCoverage" OFF)
+
 set(CMAKE_C_STANDARD 11)
+
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)
 
-set(CODECOVERAGE "-fprofile-arcs -ftest-coverage")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    SET(GCC_COVERAGE_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
+    SET(GCC_COVERAGE_LINK_FLAGS    "-lgcov")
+  endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+endif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
-set(CMAKE_C_FLAGS_DEBUG "${CODECOVERAGE} -DVERBOSE -DDEBUG -ggdb -O0 -g3 -Wall")
+add_compile_definitions(DISK_IMG_PATH="${CMAKE_BINARY_DIR}/test/disk.img")
+
+set(CMAKE_C_FLAGS_DEBUG "${GCC_COVERAGE_COMPILE_FLAGS} -DVERBOSE -DDEBUG -ggdb -O0 -g3 -Wall")
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
 
 enable_testing()
 

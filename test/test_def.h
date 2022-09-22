@@ -27,7 +27,10 @@ class TestEnvironment : public ::testing::Environment {
   void SetUp() override {
     std::srand(std::time(nullptr));
 
-    block_device_init("./disk.img");
+#ifndef DISK_IMG_PATH
+#define DISK_IMG_PATH "./disk.img"
+#endif
+    block_device_init(DISK_IMG_PATH);
 
     init_super_block();
 

@@ -13,22 +13,21 @@ add_library(test_lib_base STATIC test_util.cc)
 target_link_libraries(test_lib_base PUBLIC ${GTEST_BOTH_LIBRARIES} PUBLIC ${FUSE3_LIBRARIES} myfuse_static_base)
 target_include_directories(test_lib_base PUBLIC ${FUSE3_INCLUDE_DIRS})
 
-# block_device_test
-add_executable(block_device_test block_device_test.cc)
-target_link_libraries(block_device_test test_lib_base)
-gtest_discover_tests(block_device_test)
+macro(gtest_target target)
+  add_executable(${target}_test ${target}_test.cc)
+  target_link_libraries(${target}_test test_lib_base)
+  gtest_discover_tests(${target}_test)
 
-# bcache_buf_test
-add_executable(bcache_buf_test bcache_buf_test.cc)
-target_link_libraries(bcache_buf_test test_lib_base)
-gtest_discover_tests(bcache_buf_test)
+  if (CMAKE_BUILD_TYPE MATCHES Debug)
+    if (CodeCoverage MATCHES ON)
+      include(CodeCoverage)
+      setup_target_for_coverage(${target}_test_coverage ${target}_test coverage)
+      setup_target_for_coverage_cobertura(${target}_test_cobertura ${target}_test coverage --gtest_output=xml:coverage.junit.xml)
+    endif()
+  endif()
+endmacro()
 
-#log_test
-add_executable(log_test log_test.cc)
-target_link_libraries(log_test PUBLIC test_lib_base)
-gtest_discover_tests(log_test)
-
-#inode_test
-add_executable(inode_test inode_test.cc)
-target_link_libraries(inode_test PUBLIC test_lib_base)
-gtest_discover_tests(inode_test)
+gtest_target(block_device)
+gtest_target(bcache_buf)
+gtest_target(log)
+gtest_target(inode)
