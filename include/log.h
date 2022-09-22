@@ -47,3 +47,5 @@ void logged_relse(struct bcache_buf* b);
 
 void begin_op();
 void end_op();
+
+extern uint __thread n_log_wrote;

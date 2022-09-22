@@ -17,7 +17,7 @@ static_assert(big_file_block < NDIRECT + NINDIRECT);
 
 void* block_aligned_write_worker(void* _range) {
   auto range = (start_to_end*)_range;
-  for (int i = range->start; i < range->end; i++) {
+  for (uint i = range->start; i < range->end; i++) {
     inode_write_nbytes(single_inode, &big_file_content[i * BSIZE], BSIZE,
                        i * BSIZE);
   }
@@ -120,6 +120,8 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
   }
 
   start_worker(unaligned_random_write_worker, 10, big_file_size);
+
+  myfuse_log("write finished");
 
   start_worker(unaligned_random_read_worker, 10, big_file_size);
 

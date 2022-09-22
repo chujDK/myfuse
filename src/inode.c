@@ -266,6 +266,12 @@ static void block_free(uint b) {
   logged_relse(bp);
 }
 
+static inline void assert_no_need_to_restart_op() {
+  if (n_log_wrote >= MAXOPBLOCKS - 1) {
+    err_exit("too many blocks in one op");
+  }
+}
+
 // Inode content
 //
 // The content (data) associated with each inode is stored
@@ -297,6 +303,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     if ((addr = ip->addrs[NDIRECT]) == 0) {
       ip->addrs[NDIRECT] = addr = block_alloc();
     }
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     if ((addr = a[bn]) == 0) {
@@ -321,6 +328,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     if ((addr = ip->addrs[NDIRECT + 1]) == 0) {
       ip->addrs[NDIRECT + 1] = addr = block_alloc();
     }
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     assert(entry * sizeof(uint) < BSIZE);
@@ -330,6 +338,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     }
     logged_relse(bp);
 
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     if ((addr = a[offset]) == 0) {
@@ -358,6 +367,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     if ((addr = ip->addrs[NDIRECT + 2]) == 0) {
       ip->addrs[NDIRECT + 2] = addr = block_alloc();
     }
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     assert(entryl1 * sizeof(uint) < BSIZE);
@@ -367,6 +377,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     }
     logged_relse(bp);
 
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     assert(entryl2 * sizeof(uint) < BSIZE);
@@ -376,6 +387,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
     }
     logged_relse(bp);
 
+    assert_no_need_to_restart_op();
     bp = logged_read(addr);
     a  = (uint*)bp->data;
     if ((addr = a[offsetl2]) == 0) {
@@ -463,6 +475,15 @@ void itrunc(struct inode* ip) {
 
 static size_t min(size_t a, size_t b) { return a < b ? a : b; }
 
+static void restart_op_on(struct inode* ip, uint nwrote) {
+  if (n_log_wrote >= nwrote) {
+    iunlock(ip);
+    end_op();
+    begin_op();
+    ilock(ip);
+  }
+}
+
 void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
                         size_t off) {
   begin_op();
@@ -470,11 +491,9 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
   size_t n_left          = BSIZE - from_start;
-  uint nwrote            = 0;
   struct bcache_buf* bp  = logged_read(imap2blockno(ip, inode_block_start));
   memmove(bp->data + from_start, data, min(n_left, nbytes));
   logged_write(bp);
-  nwrote++;
   logged_relse(bp);
   if (nbytes <= n_left) {
     iunlock(ip);
@@ -487,30 +506,20 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
   // start block write
   uint inode_blockno = inode_block_start + 1;
   for (; nbytes > BSIZE; nbytes -= BSIZE) {
+    // 6 is the max imap2blockno will write
+    // 1 is the followed write
+    restart_op_on(ip, MAXOPBLOCKS - 1 - 6 - 1);
+
     bp = logged_read(imap2blockno(ip, inode_blockno));
     memmove(bp->data, data, BSIZE);
     logged_write(bp);
-    nwrote++;
     logged_relse(bp);
 
-    if (nwrote > MAXOPBLOCKS) {
-      // FIXME: this can't avoid log overflow
-      // and maybe will cause dead lock?
-      iunlock(ip);
-      end_op();
-      begin_op();
-      ilock(ip);
-    }
     data += BSIZE;
     inode_blockno++;
   }
 
-  if (nwrote > MAXOPBLOCKS) {
-    iunlock(ip);
-    end_op();
-    begin_op();
-    ilock(ip);
-  }
+  restart_op_on(ip, MAXOPBLOCKS - 1);
 
   // write last block
   if (nbytes) {
@@ -545,6 +554,9 @@ void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
   // start block write
   uint inode_blockno = inode_block_start + 1;
   for (; nbytes > BSIZE; nbytes -= BSIZE) {
+    // 6 is the max imap2blockno will write
+    restart_op_on(ip, MAXOPBLOCKS - 1 - 3);
+
     bp = logged_read(imap2blockno(ip, inode_blockno));
     memmove(data, bp->data, BSIZE);
     logged_relse(bp);

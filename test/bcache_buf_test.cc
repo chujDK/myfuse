@@ -9,7 +9,7 @@ std::array<bool, MAX_BLOCK_NO> wrote;
 
 void* test_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
-  for (int i = range->start; i < range->end; i++) {
+  for (uint i = range->start; i < range->end; i++) {
     int blockno = content_blockno[i];
     auto b      = bread(blockno);
     memcpy(b->data, contents[blockno], BSIZE);

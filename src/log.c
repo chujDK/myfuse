@@ -96,6 +96,7 @@ void begin_op() {
       break;
     }
   }
+  n_log_wrote = 0;
 }
 
 void end_op() {
@@ -149,6 +150,10 @@ static void commit() {
   }
 }
 
+// use this dark magic to make higher level need not to worry about the limit of
+// MAXOPBLOCK
+uint __thread n_log_wrote = 0;
+
 void logged_write(struct bcache_buf* b) {
   pthread_mutex_lock(&fslog.lock);
   if (fslog.lh.n >= NLOG || fslog.lh.n >= fslog.size - 1) {
@@ -157,6 +162,8 @@ void logged_write(struct bcache_buf* b) {
   if (fslog.outstanding < 1) {
     err_exit("logged_write outside of transaction");
   }
+
+  n_log_wrote++;
 
   int block_idx;
   for (block_idx = 0; block_idx < fslog.lh.n; block_idx++) {

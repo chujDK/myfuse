@@ -38,7 +38,7 @@ struct superblock {
 
 // On-disk inode structure
 struct dinode {
-  short type;              // File type
+  short type;  // File type
   // currently we don't consider the device case
   short major;             // Major device number (T_DEVICE only)
   short minor;             // Minor device number (T_DEVICE only)

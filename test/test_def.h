@@ -63,6 +63,6 @@ void start_worker(void* (*pthread_worker)(void*), uint MAXWORKER = MAX_WORKER,
 // indicate the range the worker need to workon
 // don't free it by the callee
 struct start_to_end {
-  int start;
-  int end;
+  uint start;
+  uint end;
 };

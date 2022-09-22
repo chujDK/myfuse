@@ -8,9 +8,8 @@ std::array<bool, MAX_BLOCK_NO> wrote;
 void* test_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
   begin_op();
-  int op    = 0;
   int in_op = 1;
-  for (int i = range->start; i < range->end; i++) {
+  for (uint i = range->start; i < range->end; i++) {
     int blockno = content_blockno[i];
     if (blockno < nmeta_blocks) {
       // don't write meta block
@@ -20,15 +19,13 @@ void* test_write_worker(void* _range) {
       begin_op();
       in_op = 1;
     }
-    op++;
-    op %= (MAXOPBLOCKS - 1);
     auto b = logged_read(blockno);
     memcpy(b->data, contents[blockno], BSIZE);
     logged_write(b);
     EXPECT_EQ(0, memcmp(b->data, contents[blockno], BSIZE));
     EXPECT_EQ(blockno, b->blockno);
     logged_relse(b);
-    if (op == 0) {
+    if (n_log_wrote >= MAXOPBLOCKS - 1) {
       in_op = 0;
       end_op();
     }

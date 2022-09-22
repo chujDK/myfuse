@@ -54,7 +54,7 @@ std::array<bool, MAX_BLOCK_NO> wrote;
 
 void* test_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
-  for (int i = range->start; i < range->end; i++) {
+  for (uint i = range->start; i < range->end; i++) {
     int blockno  = content_blockno[i];
     auto n_write = write_block_raw(blockno, contents[blockno]);
     EXPECT_EQ(n_write, BSIZE);
