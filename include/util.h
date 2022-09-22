@@ -10,11 +10,8 @@ void myfuse_log(const char* msg, ...);
 void myfuse_nonfatal(const char* msg, ...);
 
 struct myfuse_state* get_myfuse_state()
-#ifdef DEBUG
     // weak symbol to make the test suite can rewrite the get_myfuse_state
     // to provide state with no need to start a fuse runtime
-    __attribute__((weak))
-#endif
-    ;
+    __attribute__((weak));
 
 #define MYFUSE_STATE (get_myfuse_state())

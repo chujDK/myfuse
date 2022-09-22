@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "test_def.h"
 #include <cassert>
+#include <vector>
+#include <map>
 
 TestEnvironment* env;
 
@@ -65,6 +67,113 @@ void* unaligned_random_read_worker(void* _range) {
   }
   delete[] read_buf;
   return nullptr;
+}
+
+struct File {
+  struct FilePiece {
+    std::string content;
+    size_t start;
+    size_t size;
+
+    static FilePiece* GenRandomPiece(size_t start, size_t size) {
+      auto piece   = new FilePiece;
+      piece->start = start;
+      piece->size  = size;
+      piece->content.resize(size);
+      for (char& c : piece->content) {
+        c = rand() % 0x100;
+      }
+      return piece;
+    }
+  };
+
+  std::vector<FilePiece*> pieces;
+
+  ~File() {
+    for (auto piece : pieces) {
+      delete piece;
+    }
+  }
+
+  static File* GenRandomFile(size_t max_size   = MAXOPBLOCKS * BSIZE,
+                             size_t max_pieces = MAXOPBLOCKS) {
+    auto file    = new File;
+    size_t start = 0;
+
+    size_t piece_size;
+    size_t piece_hole_size;
+    size_t max_per_pieces_size      = (max_size / max_pieces) * 1.5;
+    size_t max_per_pieces_hole_size = (max_size / max_pieces) * 1;
+    while (start < max_size) {
+      piece_hole_size =
+          ((size_t)rand() << 32 | rand()) % max_per_pieces_hole_size + 1;
+      if (start + piece_hole_size > max_size) {
+        break;
+      }
+      start += piece_hole_size;
+      piece_size = ((size_t)rand() << 32 | rand()) % max_per_pieces_size + 1;
+      if (start + piece_size > max_size) {
+        break;
+      }
+      file->pieces.push_back(FilePiece::GenRandomPiece(start, piece_size));
+      start += piece_size;
+    }
+
+    return file;
+  }
+};
+
+std::vector<File*> files;
+std::map<File*, struct inode*> file_to_inode;
+
+void* file_write_worker(void* _range) {
+  auto range = (struct start_to_end*)_range;
+
+  for (uint i = range->start; i < range->end; i++) {
+    auto file = files[i];
+    begin_op();
+    auto inode          = ialloc(T_FILE);
+    file_to_inode[file] = inode;
+    end_op();
+    for (auto piece : file->pieces) {
+      inode_write_nbytes(inode, piece->content.c_str(), piece->size,
+                         piece->start);
+    }
+  }
+  return nullptr;
+}
+
+void* file_read_worker(void* _range) {
+  auto range = (struct start_to_end*)_range;
+
+  std::array<char, MAXOPBLOCKS * BSIZE * 4> read_buf;
+
+  for (uint i = range->start; i < range->end; i++) {
+    auto file  = files[i];
+    auto inode = file_to_inode[file];
+    for (auto piece : file->pieces) {
+      inode_read_nbytes(inode, read_buf.data(), piece->size, piece->start);
+
+      int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
+      EXPECT_EQ(eq, 0);
+    }
+  }
+  return nullptr;
+}
+
+TEST(inode, mutil_file_read_write_test) {
+  const int total_files = 500;
+
+  files.reserve(total_files);
+  // create 500 files
+  for (int i = 0; i < total_files / 2; i++) {
+    files.push_back(File::GenRandomFile());
+  }
+  for (int i = 0; i < total_files / 2; i++) {
+    files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
+  }
+
+  start_worker(file_write_worker, MAX_WORKER, files.size());
 }
 
 TEST(inode, unaligned_random_read_write_test) {
