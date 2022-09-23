@@ -21,8 +21,8 @@ static_assert(big_file_block < MAX_BLOCK_NO, "file too big!");
 void* block_aligned_write_worker(void* _range) {
   auto range = (start_to_end*)_range;
   for (uint i = range->start; i < range->end; i++) {
-    auto nbytes = inode_write_nbytes(single_inode, &big_file_content[i * BSIZE],
-                                     BSIZE, i * BSIZE);
+    auto nbytes = inode_write_nbytes_unlocked(
+        single_inode, &big_file_content[i * BSIZE], BSIZE, i * BSIZE);
     EXPECT_EQ(nbytes, BSIZE);
   }
   return nullptr;
@@ -32,8 +32,8 @@ void* block_aligned_read_worker(void*) {
   std::array<char, BSIZE> read_buf;
   for (int i = 0; i < nblock_reader_check; i++) {
     int blockno = std::rand() % big_file_block;
-    auto nbytes = inode_read_nbytes(single_inode, read_buf.data(), BSIZE,
-                                    blockno * BSIZE);
+    auto nbytes = inode_read_nbytes_unlocked(single_inode, read_buf.data(),
+                                             BSIZE, blockno * BSIZE);
     int eq = memcmp(read_buf.data(), &big_file_content[blockno * BSIZE], BSIZE);
     EXPECT_EQ(eq, 0);
     EXPECT_EQ(nbytes, BSIZE);
@@ -50,8 +50,8 @@ void* unaligned_random_write_worker(void* _range) {
     uint size = rand() % write_max_size;
     size      = std::min(range->end - i, size);
 
-    auto nbytes =
-        inode_write_nbytes(single_inode, &big_file_content[i], size, i);
+    auto nbytes = inode_write_nbytes_unlocked(single_inode,
+                                              &big_file_content[i], size, i);
     i += size;
     EXPECT_EQ(nbytes, size);
   }
@@ -65,7 +65,7 @@ void* unaligned_random_read_worker(void* _range) {
     uint size = rand() % write_max_size;
     size      = std::min(range->end - i, size);
 
-    auto nbytes = inode_read_nbytes(single_inode, read_buf, size, i);
+    auto nbytes = inode_read_nbytes_unlocked(single_inode, read_buf, size, i);
 
     int eq = memcmp(read_buf, &big_file_content[i], size);
     EXPECT_EQ(eq, 0);
@@ -146,8 +146,8 @@ void* file_write_worker(void* _range) {
     file_to_inode[file] = inode;
     end_op();
     for (auto piece : file->pieces) {
-      inode_write_nbytes(inode, piece->content.c_str(), piece->size,
-                         piece->start);
+      inode_write_nbytes_unlocked(inode, piece->content.c_str(), piece->size,
+                                  piece->start);
     }
   }
   return nullptr;
@@ -162,7 +162,8 @@ void* file_read_worker(void* _range) {
     auto file  = files[i];
     auto inode = file_to_inode[file];
     for (auto piece : file->pieces) {
-      inode_read_nbytes(inode, read_buf.data(), piece->size, piece->start);
+      inode_read_nbytes_unlocked(inode, read_buf.data(), piece->size,
+                                 piece->start);
 
       int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
       EXPECT_EQ(eq, 0);
@@ -252,12 +253,12 @@ TEST(inode, single_big_read_write_test) {
 
   long nbytes;
 
-  nbytes = inode_write_nbytes(single_inode, big_file_content.data(),
-                              big_file_content.size(), 0);
+  nbytes = inode_write_nbytes_unlocked(single_inode, big_file_content.data(),
+                                       big_file_content.size(), 0);
   EXPECT_EQ(nbytes, big_file_content.size());
 
-  nbytes = inode_read_nbytes(single_inode, big_file_buf.data(),
-                             big_file_content.size(), 0);
+  nbytes = inode_read_nbytes_unlocked(single_inode, big_file_buf.data(),
+                                      big_file_content.size(), 0);
   EXPECT_EQ(nbytes, big_file_content.size());
 
   EXPECT_EQ(big_file_content, big_file_buf);
@@ -279,7 +280,7 @@ TEST(inode, parrallel_block_aligned_read_write_test) {
   int failed = 0;
   // check the write
   for (uint i = 0; i < big_file_block; i++) {
-    inode_read_nbytes(single_inode, read_buf.data(), BSIZE, i * BSIZE);
+    inode_read_nbytes_unlocked(single_inode, read_buf.data(), BSIZE, i * BSIZE);
     int eq = memcmp(read_buf.data(), &big_file_content[i * BSIZE], BSIZE);
     if (eq != 0) {
       failed++;

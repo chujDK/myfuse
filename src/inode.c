@@ -477,8 +477,8 @@ static void restart_op_on(struct inode* ip, uint nwrote) {
   }
 }
 
-long inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
-                        size_t off) {
+long inode_write_nbytes_locked(struct inode* ip, const char* data,
+                               size_t nbytes, size_t off) {
   if (off > MAXFILE_SIZE) {
     return 0;
   }
@@ -488,9 +488,6 @@ long inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
   }
 
   long n_write = nbytes;
-
-  begin_op();
-  ilock(ip);
 
   // update size
   ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
@@ -505,8 +502,6 @@ long inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
   logged_relse(bp);
   if (nbytes <= n_left) {
     iupdate(ip);
-    iunlock(ip);
-    end_op();
     return nbytes;
   }
   nbytes -= n_left;
@@ -540,13 +535,11 @@ long inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
     logged_relse(bp);
   }
   iupdate(ip);
-  iunlock(ip);
-  end_op();
   return n_write;
 }
 
-long inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
-                       size_t off) {
+long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
+                              size_t off) {
   if (off > MAXFILE_SIZE) {
     return 0;
   }
@@ -555,8 +548,6 @@ long inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
     nbytes -= (off + nbytes - MAXFILE_SIZE);
   }
   size_t n_read = nbytes;
-  begin_op();
-  ilock(ip);
 
   // update size
   ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
@@ -569,8 +560,6 @@ long inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
   logged_relse(bp);
   if (nbytes <= n_left) {
     iupdate(ip);
-    iunlock(ip);
-    end_op();
     return nbytes;
   }
   nbytes -= n_left;
@@ -598,10 +587,28 @@ long inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
     logged_relse(bp);
   }
   iupdate(ip);
-  iunlock(ip);
-  end_op();
 
   return n_read;
+}
+
+long inode_write_nbytes_unlocked(struct inode* ip, const char* data,
+                                 size_t bytes, size_t off) {
+  begin_op();
+  ilock(ip);
+  long nbytes = inode_write_nbytes_locked(ip, data, bytes, off);
+  iunlock(ip);
+  end_op();
+  return nbytes;
+}
+
+long inode_read_nbytes_unlocked(struct inode* ip, char* data, size_t bytes,
+                                size_t off) {
+  begin_op();
+  ilock(ip);
+  long nbytes = inode_read_nbytes_locked(ip, data, bytes, off);
+  iunlock(ip);
+  end_op();
+  return nbytes;
 }
 
 void stat_inode(struct inode* ip, struct stat_inode* st) {

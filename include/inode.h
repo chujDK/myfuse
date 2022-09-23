@@ -113,6 +113,16 @@ struct inode* ialloc(short type);
 
 uint imap2blockno(struct inode* ip, uint bn);
 
-long inode_write_nbytes(struct inode* ip, const char* data, size_t bytes,
-                        size_t off);
-long inode_read_nbytes(struct inode* ip, char* data, size_t bytes, size_t off);
+// this should called outside a op and ip->lock unlocked
+long inode_write_nbytes_unlocked(struct inode* ip, const char* data,
+                                 size_t bytes, size_t off);
+// this should called outside a op and ip->lock unlocked
+long inode_read_nbytes_unlocked(struct inode* ip, char* data, size_t bytes,
+                                size_t off);
+
+// this should called inside a op and ip->lock locked
+long inode_write_nbytes_locked(struct inode* ip, const char* data, size_t bytes,
+                               size_t off);
+// this should called inside a op and ip->lock locked
+long inode_read_nbytes_locked(struct inode* ip, char* data, size_t bytes,
+                              size_t off);
