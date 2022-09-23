@@ -102,13 +102,14 @@ int main(int argc, char* argv[]) {
   disk_size /= sector_per_block;
   mkfs_log("disk has %u blocks", disk_size);
 
-  nbitmap       = disk_size / (BSIZE * 8) + 1;
-  ninode_blocks = ceil(disk_size / 100) + 1;
-  ninodes       = ninode_blocks * IPB;
-  nmeta_blocks  = 2 + nlog + ninode_blocks + nbitmap;
-  nblocks       = disk_size - nmeta_blocks;
+  nbitmap           = disk_size / (BSIZE * 8) + 1;
+  ninode_blocks     = ceil(disk_size / 100) + 1;
+  ninodes           = ninode_blocks * IPB;
+  nmeta_blocks      = 2 + nlog + ninode_blocks + nbitmap;
+  nblocks           = disk_size - nmeta_blocks;
+  const double ONEK = 1024.0;
   mkfs_log("this disk can have about %.2lf GiB storage",
-           ((nblocks * 1024.0) / 1024.0 / 1024.0 / 1024.0) * 0.98);
+           ((nblocks * ONEK) / ONEK / ONEK / ONEK) * 0.98);
   printf(
       "nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) "
       "blocks %d total %d\n",

@@ -10,12 +10,13 @@ struct inode* single_inode;
 
 const int nwriter             = 10;
 const int nblock_reader_check = 1000;
-const uint big_file_block =
-    nwriter * ((uint)((NINDIRECT2 + 1000) / nwriter) + 1);
-const uint big_file_size = big_file_block * BSIZE;
+const uint big_file_block = nwriter * ((uint)((NINDIRECT1 * 20) / nwriter) + 1);
+const uint64_t big_file_size = (uint64_t)big_file_block * BSIZE;
 std::array<char, big_file_size> big_file_content;
+std::array<char, big_file_size> big_file_buf;
 
-static_assert(big_file_block < NDIRECT + NINDIRECT);
+static_assert(big_file_block < NDIRECT + NINDIRECT, "file too big!");
+static_assert(big_file_block < MAX_BLOCK_NO, "file too big!");
 
 void* block_aligned_write_worker(void* _range) {
   auto range = (start_to_end*)_range;
@@ -88,6 +89,7 @@ struct File {
   };
 
   std::vector<FilePiece*> pieces;
+  size_t file_tatol_size;
 
   ~File() {
     for (auto piece : pieces) {
@@ -118,6 +120,8 @@ struct File {
       file->pieces.push_back(FilePiece::GenRandomPiece(start, piece_size));
       start += piece_size;
     }
+
+    file->file_tatol_size = start;
 
     return file;
   }
@@ -157,23 +161,17 @@ void* file_read_worker(void* _range) {
       int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
       EXPECT_EQ(eq, 0);
     }
+
+    struct stat_inode st;
+    stat_inode(inode, &st);
+    EXPECT_EQ(st.inum, inode->inum);
+    EXPECT_EQ(st.size, inode->size);
+    EXPECT_EQ(st.nlink, inode->nlink);
+    EXPECT_EQ(st.type, inode->type);
+    EXPECT_EQ(inode->type, T_FILE);
+    EXPECT_EQ(inode->size, file->file_tatol_size);
   }
   return nullptr;
-}
-
-TEST(inode, mutil_file_read_write_test) {
-  const int total_files = 500;
-
-  files.reserve(total_files);
-  // create 500 files
-  for (int i = 0; i < total_files / 2; i++) {
-    files.push_back(File::GenRandomFile());
-  }
-  for (int i = 0; i < total_files / 2; i++) {
-    files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
-  }
-
-  start_worker(file_write_worker, MAX_WORKER, files.size());
 }
 
 TEST(inode, unaligned_random_read_write_test) {
@@ -237,6 +235,24 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
   end_op();
 }
 
+TEST(inode, single_big_read_write_test) {
+  begin_op();
+  single_inode = ialloc(T_FILE);
+  end_op();
+
+  for (char& c : big_file_content) {
+    c = rand() % 0x100;
+  }
+
+  inode_write_nbytes(single_inode, big_file_content.data(),
+                     big_file_content.size(), 0);
+
+  inode_read_nbytes(single_inode, big_file_buf.data(), big_file_content.size(),
+                    0);
+
+  EXPECT_EQ(big_file_content, big_file_buf);
+}
+
 TEST(inode, parrallel_block_aligned_read_write_test) {
   begin_op();
   single_inode = ialloc(T_FILE);
@@ -270,6 +286,21 @@ TEST(inode, parrallel_block_aligned_read_write_test) {
   begin_op();
   iput(single_inode);
   end_op();
+}
+
+TEST(inode, mutil_file_read_write_test) {
+  const int total_files = 50;
+
+  files.reserve(total_files);
+  // create 500 files
+  for (int i = 0; i < total_files / 2; i++) {
+    files.push_back(File::GenRandomFile());
+  }
+  for (int i = 0; i < total_files / 2; i++) {
+    files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
+  }
+
+  start_worker(file_write_worker, MAX_WORKER, files.size());
 }
 
 int main(int argc, char* argv[]) {

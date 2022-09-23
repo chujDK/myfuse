@@ -13,9 +13,15 @@ extern "C" {
 }
 #include <unistd.h>
 #include <cstdlib>
+#include <array>
 #endif
 
-#define MAX_BLOCK_NO 400000
+#define MAX_SECTOR_BLOCK_NO 400000
+const int sector_size      = 512;
+const int sector_per_block = BSIZE / sector_size;
+static_assert(MAX_SECTOR_BLOCK_NO % sector_per_block == 0,
+              "test disk unaligned!");
+#define MAX_BLOCK_NO MAX_SECTOR_BLOCK_NO / sector_per_block
 extern int nmeta_blocks;
 
 struct myfuse_state* get_myfuse_state();

@@ -85,6 +85,15 @@ struct inode {
   uint addrs[NDIRECT + NSUBDIRECT];
 };
 
+struct stat_inode {
+  uint inum;      // Inode number
+  short type;     // Type of file
+  short nlink;    // Number of links to file
+  uint64_t size;  // Size of file in bytes
+};
+
+void stat_inode(struct inode* ip, struct stat_inode* st);
+
 int inode_init();
 
 void iunlockput(struct inode* ip);

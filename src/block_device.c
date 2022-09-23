@@ -11,6 +11,11 @@ static pthread_mutex_t disk_lock;
 static int device_fd;
 
 static int write_block_raw_byfd(int fd, uint block_id, const u_char *buf) {
+#ifdef DEBUG
+  if (block_id >= MYFUSE_STATE->sb.size) {
+    err_exit("write out side of disk");
+  }
+#endif
   pthread_mutex_lock(&disk_lock);
   if (lseek(fd, block_id * BSIZE, SEEK_SET) != block_id * BSIZE) {
     return -1;
@@ -25,6 +30,11 @@ int write_block_raw(uint block_id, const u_char *buf) {
 }
 
 static int read_block_raw_byfd(int fd, uint block_id, u_char *buf) {
+#ifdef DEBUG
+  if (block_id >= MYFUSE_STATE->sb.size) {
+    err_exit("read out side of disk");
+  }
+#endif
   pthread_mutex_lock(&disk_lock);
   if (lseek(fd, block_id * BSIZE, SEEK_SET) != block_id * BSIZE) {
     return -1;
@@ -40,6 +50,11 @@ int read_block_raw(uint block_id, u_char *buf) {
 
 static int read_block_raw_nbytes_byfd(int fd, uint block_id, u_char *buf,
                                       uint nbytes) {
+#ifdef DEBUG
+  if (block_id > MYFUSE_STATE->sb.size) {
+    err_exit("read out side of disk");
+  }
+#endif
   pthread_mutex_lock(&disk_lock);
   if (lseek(fd, block_id * BSIZE, SEEK_SET) != block_id * BSIZE) {
     return -1;

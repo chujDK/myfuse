@@ -1,4 +1,5 @@
 #include "random"
+#include <algorithm>
 #include "test_def.h"
 
 // map blockno to it's expected content

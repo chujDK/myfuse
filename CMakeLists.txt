@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 project(myfuse)
 
 option(CodeCoverage "CodeCoverage" OFF)
+option(UseTmpfs "use tmpfs (ramdisk) to bump the test speed" OFF)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -18,9 +19,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
-add_compile_definitions(DISK_IMG_PATH="${CMAKE_BINARY_DIR}/test/disk.img")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND UseTmpfs MATCHES ON AND EXISTS ${TmpfsPath})
+  MESSAGE("use tmpfs (ramdisk) to bump the test speed")
+  add_compile_definitions(DISK_IMG_PATH="${TmpfsPath}/myfuse/disk.img")
+else()
+  add_compile_definitions(DISK_IMG_PATH="${CMAKE_BINARY_DIR}/test/disk.img")
+endif()
 
-set(CMAKE_C_FLAGS_DEBUG "${GCC_COVERAGE_COMPILE_FLAGS} -DVERBOSE -DDEBUG -ggdb -O0 -g3 -Wall")
+
+
+set(CMAKE_C_FLAGS_DEBUG "${GCC_COVERAGE_COMPILE_FLAGS} -DVERBOSE -DDEBUG -ggdb -O0 -g3 -Wall -DMAP_DISK_IMG_TO_MEMORY")
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})

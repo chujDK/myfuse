@@ -2,10 +2,10 @@
 #include <sys/types.h>
 
 #define FSMAGIC 0x636a6673
-#define BSIZE 1024
-#define MAXOPBLOCKS 85
-#define NCACHE_BUF (MAXOPBLOCKS * 3)
-#define NLOG (MAXOPBLOCKS * 3)
+#define BSIZE 4096
+#define MAXOPBLOCKS 127
+#define NCACHE_BUF (MAXOPBLOCKS * 8)
+#define NLOG (MAXOPBLOCKS * 8)
 
 // Disk layout:
 // [ boot block (skip) | super block | log | inode blocks |
@@ -34,7 +34,8 @@ struct superblock {
 #define NSUBDIRECT 3
 
 #define NBLOCKADDR (NDIRECT + NSUBDIRECT)
-#define MAXFILE (NDIRECT + NINDIRECT)
+#define MAXFILE_BLOCKS (NDIRECT + NINDIRECT)
+#define MAXFILE_SIZE ((NDIRECT + NINDIRECT) * BSIZE)
 
 // On-disk inode structure
 struct dinode {

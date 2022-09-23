@@ -10,7 +10,7 @@ struct {
   struct inode* inode;
 } itable;
 
-pthread_spinlock_t block_alloc_lock;
+pthread_mutex_t block_alloc_lock;
 
 int inode_init() {
   pthread_spin_init(&itable.lock, 1);
@@ -21,7 +21,7 @@ int inode_init() {
     pthread_mutex_init(&itable.inode[i].lock, NULL);
   }
 
-  pthread_spin_init(&block_alloc_lock, 1);
+  pthread_mutex_init(&block_alloc_lock, NULL);
   return 0;
 }
 
@@ -202,32 +202,25 @@ static void zero_a_block(uint bno) {
 // simple block allocator
 // Allocate a zeroed block on disk
 static uint block_alloc() {
+  pthread_mutex_lock(&block_alloc_lock);
   int b, bi, m;
   struct bcache_buf* bp = 0;
 
   static uint last_alloced = 0;
   uint nmeta               = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
-  pthread_spin_lock(&block_alloc_lock);
   if (last_alloced == 0) {
     last_alloced = nmeta;
   }
-  pthread_spin_unlock(&block_alloc_lock);
   for (b = 0; b < MYFUSE_STATE->sb.size; b += BPB) {
-    pthread_spin_lock(&block_alloc_lock);
     if (b + BPB < last_alloced) {
-      pthread_spin_unlock(&block_alloc_lock);
       continue;
     }
-    pthread_spin_unlock(&block_alloc_lock);
 
     bp = logged_read(BBLOCK(b));
     for (bi = 0; bi < BPB && b + bi < MYFUSE_STATE->sb.size; bi++) {
-      pthread_spin_lock(&block_alloc_lock);
       if (b + bi < last_alloced) {
-        pthread_spin_unlock(&block_alloc_lock);
         continue;
       }
-      pthread_spin_unlock(&block_alloc_lock);
 
       m = 1 << (bi % 8);
       if ((bp->data[bi / 8] & m) == 0) {  // Is block free?
@@ -236,18 +229,16 @@ static uint block_alloc() {
         logged_relse(bp);
         zero_a_block(b + bi);
 
-        pthread_spin_lock(&block_alloc_lock);
         last_alloced = b + bi;
-        pthread_spin_unlock(&block_alloc_lock);
 
+        pthread_mutex_unlock(&block_alloc_lock);
         return b + bi;
       }
     }
     brelse(bp);
   }
-  pthread_spin_lock(&block_alloc_lock);
   last_alloced = nmeta;
-  pthread_spin_unlock(&block_alloc_lock);
+  pthread_mutex_unlock(&block_alloc_lock);
   return block_alloc();
 }
 
@@ -467,12 +458,18 @@ void itrunc(struct inode* ip) {
 
   // TODO: this is unneccessary?
   memset(ip->addrs, 0, sizeof(ip->addrs));
+
+  ip->size = 0;
+  iupdate(ip);
 }
 
 static size_t min(size_t a, size_t b) { return a < b ? a : b; }
 
 static void restart_op_on(struct inode* ip, uint nwrote) {
-  if (n_log_wrote >= nwrote) {
+  // iupdate will write the inode to disk, so we need to
+  // reserve the op
+  if (n_log_wrote >= nwrote - 1) {
+    iupdate(ip);
     iunlock(ip);
     end_op();
     begin_op();
@@ -482,8 +479,20 @@ static void restart_op_on(struct inode* ip, uint nwrote) {
 
 void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
                         size_t off) {
+  if (off > MAXFILE_SIZE) {
+    return;
+  }
+
+  if (off + nbytes > MAXFILE_SIZE) {
+    nbytes -= (off + nbytes - MAXFILE_SIZE);
+  }
+
   begin_op();
   ilock(ip);
+
+  // update size
+  ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
+
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
   size_t n_left          = BSIZE - from_start;
@@ -493,6 +502,7 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
   logged_write(bp);
   logged_relse(bp);
   if (nbytes <= n_left) {
+    iupdate(ip);
     iunlock(ip);
     end_op();
     return;
@@ -527,13 +537,20 @@ void inode_write_nbytes(struct inode* ip, const char* data, size_t nbytes,
     logged_write(bp);
     logged_relse(bp);
   }
+  iupdate(ip);
   iunlock(ip);
   end_op();
 }
 
 void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
                        size_t off) {
-  // read op won't cause log, so just begin and end
+  if (off > MAXFILE_SIZE) {
+    return;
+  }
+
+  if (off + nbytes > MAXFILE_SIZE) {
+    nbytes -= (off + nbytes - MAXFILE_SIZE);
+  }
   begin_op();
   ilock(ip);
   uint inode_block_start = ((size_t)(off / BSIZE));
@@ -543,6 +560,7 @@ void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
   memmove(data, bp->data + from_start, min(n_left, nbytes));
   logged_relse(bp);
   if (nbytes <= n_left) {
+    iupdate(ip);
     iunlock(ip);
     end_op();
     return;
@@ -565,10 +583,20 @@ void inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
 
   // write last block
   if (nbytes) {
+    // 3 is the max imap2blockno will write
+    restart_op_on(ip, MAXOPBLOCKS - 1 - 3);
     bp = logged_read(imap2blockno(ip, inode_blockno));
     memmove(data, bp->data, nbytes);
     logged_relse(bp);
   }
+  iupdate(ip);
   iunlock(ip);
   end_op();
+}
+
+void stat_inode(struct inode* ip, struct stat_inode* st) {
+  st->inum  = ip->inum;
+  st->nlink = ip->nlink;
+  st->size  = ip->size;
+  st->type  = ip->type;
 }
