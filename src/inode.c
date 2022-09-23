@@ -66,7 +66,7 @@ static struct inode* iget(uint inum) {
   return iget(inum);
 }
 
-// currently only type FILE is allowed
+// currently only type FILE && DIR is allowed
 struct inode* ialloc(short type) {
   struct bcache_buf* bp;
   struct dinode* dip;
@@ -557,6 +557,10 @@ long inode_read_nbytes(struct inode* ip, char* data, size_t nbytes,
   size_t n_read = nbytes;
   begin_op();
   ilock(ip);
+
+  // update size
+  ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
+
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
   size_t n_left          = BSIZE - from_start;

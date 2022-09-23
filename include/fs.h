@@ -63,9 +63,11 @@ struct dinode {
 // Directory is a file containing a sequence of dirent structures
 struct dirent {
   ushort inum;
-#define DIRSIZE (0x10 - sizeof(ushort))
+#define DIRSIZE (0x20 - sizeof(ushort))
   char name[DIRSIZE];
 };
+
+#define MAX_DIRENT_PERDIR (BSIZE / sizeof(dirent))
 
 // internal used inode type
 #define T_UNUSE 0
