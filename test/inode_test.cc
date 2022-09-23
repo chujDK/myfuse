@@ -135,6 +135,7 @@ struct File {
 
 std::vector<File*> files;
 std::map<File*, struct inode*> file_to_inode;
+std::map<uint, File*> inum_to_file;
 
 void* file_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
@@ -142,13 +143,22 @@ void* file_write_worker(void* _range) {
   for (uint i = range->start; i < range->end; i++) {
     auto file = files[i];
     begin_op();
-    auto inode          = ialloc(T_FILE);
-    file_to_inode[file] = inode;
+    auto inode                = ialloc(T_FILE);
+    file_to_inode[file]       = inode;
+    inum_to_file[inode->inum] = file;
+    // manully link
+    ilock(inode);
+    inode->nlink = 1;
+    iupdate(inode);
+    iunlock(inode);
     end_op();
     for (auto piece : file->pieces) {
       inode_write_nbytes_unlocked(inode, piece->content.c_str(), piece->size,
                                   piece->start);
     }
+    begin_op();
+    iput(inode);
+    end_op();
   }
   return nullptr;
 }
@@ -159,13 +169,24 @@ void* file_read_worker(void* _range) {
   std::array<char, MAXOPBLOCKS * BSIZE * 4> read_buf;
 
   for (uint i = range->start; i < range->end; i++) {
-    auto file  = files[i];
-    auto inode = file_to_inode[file];
+    auto file          = files[i];
+    auto inode         = file_to_inode[file];
+    auto inode_by_iget = iget(inode->inum);
+    EXPECT_EQ(inode, inode_by_iget);
+    // EXPECT_EQ(inode->inum, inode_by_iget->inum);
     for (auto piece : file->pieces) {
-      inode_read_nbytes_unlocked(inode, read_buf.data(), piece->size,
-                                 piece->start);
+      EXPECT_EQ(inode_read_nbytes_unlocked(inode, read_buf.data(), piece->size,
+                                           piece->start),
+                piece->size);
 
       int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
+      EXPECT_EQ(eq, 0);
+
+      EXPECT_EQ(inode_read_nbytes_unlocked(inode_by_iget, read_buf.data(),
+                                           piece->size, piece->start),
+                piece->size);
+
+      eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
       EXPECT_EQ(eq, 0);
     }
 
@@ -177,8 +198,33 @@ void* file_read_worker(void* _range) {
     EXPECT_EQ(st.type, inode->type);
     EXPECT_EQ(inode->type, T_FILE);
     EXPECT_EQ(inode->size, file->file_tatol_size);
+
+    iput(inode);
+    // manually unlink
+    ilock(inode_by_iget);
+    inode_by_iget->nlink--;
+    iupdate(inode_by_iget);
+    iunlock(inode_by_iget);
+    iput(inode_by_iget);
   }
   return nullptr;
+}
+
+TEST(inode, truncate_test) {
+  // this test mayno failed it self, but may fail other test by filling all disk
+  // with junk
+  std::array<char, BSIZE> ones;
+  ones.fill(1);
+  begin_op();
+  auto fill_all_disk_file = ialloc(T_FILE);
+  end_op();
+  for (uint i = 0; i < (uint)(MAX_BLOCK_NO - nmeta_blocks - 1000); i++) {
+    inode_write_nbytes_unlocked(fill_all_disk_file, ones.data(), BSIZE,
+                                i * BSIZE);
+  }
+  begin_op();
+  iput(fill_all_disk_file);
+  end_op();
 }
 
 TEST(inode, unaligned_random_read_write_test) {

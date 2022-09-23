@@ -38,7 +38,7 @@ static void itable_grow() {
 
 // return the {inum}-th inode's in memory copy
 // the inode isn't locked and haven't read from disk
-static struct inode* iget(uint inum) {
+struct inode* iget(uint inum) {
   struct inode* empty_victim = 0;
   pthread_spin_lock(&itable.lock);
   for (struct inode* ip = itable.inode; ip < itable.inode + itable.ninode;
@@ -207,6 +207,7 @@ static uint block_alloc() {
   struct bcache_buf* bp = 0;
 
   static uint last_alloced = 0;
+  static int in_retry      = 0;
   uint nmeta               = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
   if (last_alloced == 0) {
     last_alloced = nmeta;
@@ -225,19 +226,25 @@ static uint block_alloc() {
       m = 1 << (bi % 8);
       if ((bp->data[bi / 8] & m) == 0) {  // Is block free?
         bp->data[bi / 8] |= m;            // Mark block in use.
+        in_retry = 0;
+        pthread_mutex_unlock(&block_alloc_lock);
+
         logged_write(bp);
         logged_relse(bp);
         zero_a_block(b + bi);
 
         last_alloced = b + bi;
 
-        pthread_mutex_unlock(&block_alloc_lock);
         return b + bi;
       }
     }
     brelse(bp);
   }
+  if (in_retry) {
+    err_exit("DISK STORAGE NOT ENOUGH!");
+  }
   last_alloced = nmeta;
+  in_retry     = 1;
   pthread_mutex_unlock(&block_alloc_lock);
   return block_alloc();
 }

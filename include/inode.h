@@ -111,6 +111,8 @@ struct inode* idup(struct inode* ip);
 
 struct inode* ialloc(short type);
 
+struct inode* iget(uint inum);
+
 uint imap2blockno(struct inode* ip, uint bn);
 
 // this should called outside a op and ip->lock unlocked
