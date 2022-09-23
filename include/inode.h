@@ -113,6 +113,6 @@ struct inode* ialloc(short type);
 
 uint imap2blockno(struct inode* ip, uint bn);
 
-void inode_write_nbytes(struct inode* ip, const char* data, size_t bytes,
+long inode_write_nbytes(struct inode* ip, const char* data, size_t bytes,
                         size_t off);
-void inode_read_nbytes(struct inode* ip, char* data, size_t bytes, size_t off);
+long inode_read_nbytes(struct inode* ip, char* data, size_t bytes, size_t off);

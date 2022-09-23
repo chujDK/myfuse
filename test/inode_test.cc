@@ -21,8 +21,9 @@ static_assert(big_file_block < MAX_BLOCK_NO, "file too big!");
 void* block_aligned_write_worker(void* _range) {
   auto range = (start_to_end*)_range;
   for (uint i = range->start; i < range->end; i++) {
-    inode_write_nbytes(single_inode, &big_file_content[i * BSIZE], BSIZE,
-                       i * BSIZE);
+    auto nbytes = inode_write_nbytes(single_inode, &big_file_content[i * BSIZE],
+                                     BSIZE, i * BSIZE);
+    EXPECT_EQ(nbytes, BSIZE);
   }
   return nullptr;
 }
@@ -31,9 +32,11 @@ void* block_aligned_read_worker(void*) {
   std::array<char, BSIZE> read_buf;
   for (int i = 0; i < nblock_reader_check; i++) {
     int blockno = std::rand() % big_file_block;
-    inode_read_nbytes(single_inode, read_buf.data(), BSIZE, blockno * BSIZE);
+    auto nbytes = inode_read_nbytes(single_inode, read_buf.data(), BSIZE,
+                                    blockno * BSIZE);
     int eq = memcmp(read_buf.data(), &big_file_content[blockno * BSIZE], BSIZE);
     EXPECT_EQ(eq, 0);
+    EXPECT_EQ(nbytes, BSIZE);
   }
   return nullptr;
 }
@@ -47,8 +50,10 @@ void* unaligned_random_write_worker(void* _range) {
     uint size = rand() % write_max_size;
     size      = std::min(range->end - i, size);
 
-    inode_write_nbytes(single_inode, &big_file_content[i], size, i);
+    auto nbytes =
+        inode_write_nbytes(single_inode, &big_file_content[i], size, i);
     i += size;
+    EXPECT_EQ(nbytes, size);
   }
   return nullptr;
 }
@@ -60,10 +65,11 @@ void* unaligned_random_read_worker(void* _range) {
     uint size = rand() % write_max_size;
     size      = std::min(range->end - i, size);
 
-    inode_read_nbytes(single_inode, read_buf, size, i);
+    auto nbytes = inode_read_nbytes(single_inode, read_buf, size, i);
 
     int eq = memcmp(read_buf, &big_file_content[i], size);
     EXPECT_EQ(eq, 0);
+    EXPECT_EQ(nbytes, size);
     i += size;
   }
   delete[] read_buf;
@@ -244,11 +250,15 @@ TEST(inode, single_big_read_write_test) {
     c = rand() % 0x100;
   }
 
-  inode_write_nbytes(single_inode, big_file_content.data(),
-                     big_file_content.size(), 0);
+  long nbytes;
 
-  inode_read_nbytes(single_inode, big_file_buf.data(), big_file_content.size(),
-                    0);
+  nbytes = inode_write_nbytes(single_inode, big_file_content.data(),
+                              big_file_content.size(), 0);
+  EXPECT_EQ(nbytes, big_file_content.size());
+
+  nbytes = inode_read_nbytes(single_inode, big_file_buf.data(),
+                             big_file_content.size(), 0);
+  EXPECT_EQ(nbytes, big_file_content.size());
 
   EXPECT_EQ(big_file_content, big_file_buf);
 }
