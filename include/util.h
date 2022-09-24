@@ -15,3 +15,15 @@ struct myfuse_state* get_myfuse_state()
     __attribute__((weak));
 
 #define MYFUSE_STATE (get_myfuse_state())
+
+#define ROUNDUP(x, align) (((x) + align - 1) & ~(align - 1))
+#define ROUNDDOWN(x, align) (((x)) & ~(align - 1))
+
+#ifdef DEBUG
+#define DEBUG_TEST(statements) \
+  do {                         \
+    statements                 \
+  } while (0)
+#else
+#define DEBUG_TEST(statements)
+#endif

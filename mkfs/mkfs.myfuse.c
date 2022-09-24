@@ -102,7 +102,10 @@ int main(int argc, char* argv[]) {
   disk_size /= sector_per_block;
   mkfs_log("disk has %u blocks", disk_size);
 
-  nbitmap           = disk_size / (BSIZE * 8) + 1;
+  nbitmap = disk_size / BPB + 1;
+  if (disk_size % BPB == 0) {
+    nbitmap--;
+  }
   ninode_blocks     = ceil(disk_size / 100) + 1;
   ninodes           = ninode_blocks * IPB;
   nmeta_blocks      = 2 + nlog + ninode_blocks + nbitmap;
@@ -114,7 +117,7 @@ int main(int argc, char* argv[]) {
       "nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) "
       "blocks %d total %d\n",
       nmeta_blocks, nlog, ninode_blocks, nbitmap, nblocks, disk_size);
-  printf("%d bytes per-block\n", BSIZE);
+  printf("%ld bytes per-block\n", BSIZE);
 
   sb.magic      = FSMAGIC;
   sb.ninodes    = ninodes;
@@ -150,6 +153,20 @@ int main(int argc, char* argv[]) {
   memset(data_buf, 0xFF, nmeta_bitmap_byte);
   data_buf[nmeta_bitmap_byte] = meta_bitmap_left_byte;
   write_block_raw(fsfd, nmeta_bitmap_block + sb.bmapstart, data_buf);
+
+  // FIXME: this is faulty
+  memset(data_buf, 0, sizeof(data_buf));
+  uint end_of_last_block = (nblocks % BPB);
+  if (end_of_last_block) {
+    uint n_padding_byte = end_of_last_block / 8;
+    uint n_padding_bit  = end_of_last_block * 8;
+    uint padding_bit    = 0;
+    memset(data_buf + BSIZE - n_padding_byte, 0xFF, n_padding_byte);
+    for (int i = 0; i < n_padding_bit; i++) {
+      padding_bit |= (1 << (8 - i));
+    }
+    data_buf[BSIZE - n_padding_bit - 1] = padding_bit;
+  }
 
   return 0;
 }

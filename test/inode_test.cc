@@ -31,7 +31,7 @@ void* block_aligned_write_worker(void* _range) {
 void* block_aligned_read_worker(void*) {
   std::array<char, BSIZE> read_buf;
   for (int i = 0; i < nblock_reader_check; i++) {
-    int blockno = std::rand() % big_file_block;
+    int blockno = rand() % big_file_block;
     auto nbytes = inode_read_nbytes_unlocked(single_inode, read_buf.data(),
                                              BSIZE, blockno * BSIZE);
     int eq = memcmp(read_buf.data(), &big_file_content[blockno * BSIZE], BSIZE);
@@ -218,7 +218,7 @@ TEST(inode, truncate_test) {
   begin_op();
   auto fill_all_disk_file = ialloc(T_FILE);
   end_op();
-  for (uint i = 0; i < (uint)(MAX_BLOCK_NO - nmeta_blocks - 1000); i++) {
+  for (uint i = 0; i < (uint)((MAX_BLOCK_NO - nmeta_blocks) * 0.9); i++) {
     inode_write_nbytes_unlocked(fill_all_disk_file, ones.data(), BSIZE,
                                 i * BSIZE);
   }
@@ -235,7 +235,7 @@ TEST(inode, unaligned_random_read_write_test) {
   end_op();
 
   for (char& c : big_file_content) {
-    c = std::rand();
+    c = rand();
   }
 
   start_worker(unaligned_random_write_worker, 1, big_file_size);
@@ -255,7 +255,7 @@ TEST(inode, big_unaligned_random_read_write_test) {
   end_op();
 
   for (char& c : big_file_content) {
-    c = std::rand();
+    c = rand();
   }
 
   start_worker(unaligned_random_write_worker, 1, big_file_size);
@@ -276,7 +276,7 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
   end_op();
 
   for (char& c : big_file_content) {
-    c = std::rand();
+    c = rand();
   }
 
   start_worker(unaligned_random_write_worker, 10, big_file_size);

@@ -15,9 +15,9 @@ TEST(block_device, read_write_test) {
 
   for (int i = 0; i < 1000; i++) {
     for (auto& c : write_buf) {
-      c = std::rand() % 0x100;
+      c = rand() % 0x100;
     }
-    int blockno = std::rand() % MAX_BLOCK_NO;
+    int blockno = rand() % MAX_BLOCK_NO;
     int n_write = write_block_raw(blockno, write_buf.data());
     EXPECT_EQ(n_write, BSIZE);
     int n_read = read_block_raw(blockno, read_buf.data());

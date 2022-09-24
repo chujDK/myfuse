@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <assert.h>
 #include "log.h"
+#include "block_allocator.h"
 
 struct {
   pthread_spinlock_t lock;
@@ -22,6 +23,8 @@ int inode_init() {
   }
 
   pthread_mutex_init(&block_alloc_lock, NULL);
+
+  block_allocator_init();
   return 0;
 }
 
@@ -189,79 +192,6 @@ void iput(struct inode* ip) {
 void iunlockput(struct inode* ip) {
   iunlock(ip);
   iput(ip);
-}
-
-static void zero_a_block(uint bno) {
-  static const char zeros[BSIZE] = {0};
-  struct bcache_buf* bp          = logged_read(bno);
-  memmove(bp->data, zeros, BSIZE);
-  logged_write(bp);
-  logged_relse(bp);
-}
-
-// simple block allocator
-// Allocate a zeroed block on disk
-static uint block_alloc() {
-  pthread_mutex_lock(&block_alloc_lock);
-  int b, bi, m;
-  struct bcache_buf* bp = 0;
-
-  static uint last_alloced = 0;
-  static int in_retry      = 0;
-  uint nmeta               = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
-  if (last_alloced == 0) {
-    last_alloced = nmeta;
-  }
-  for (b = 0; b < MYFUSE_STATE->sb.size; b += BPB) {
-    if (b + BPB < last_alloced) {
-      continue;
-    }
-
-    bp = logged_read(BBLOCK(b));
-    for (bi = 0; bi < BPB && b + bi < MYFUSE_STATE->sb.size; bi++) {
-      if (b + bi < last_alloced) {
-        continue;
-      }
-
-      m = 1 << (bi % 8);
-      if ((bp->data[bi / 8] & m) == 0) {  // Is block free?
-        bp->data[bi / 8] |= m;            // Mark block in use.
-        in_retry = 0;
-        pthread_mutex_unlock(&block_alloc_lock);
-
-        logged_write(bp);
-        logged_relse(bp);
-        zero_a_block(b + bi);
-
-        last_alloced = b + bi;
-
-        return b + bi;
-      }
-    }
-    brelse(bp);
-  }
-  if (in_retry) {
-    err_exit("DISK STORAGE NOT ENOUGH!");
-  }
-  last_alloced = nmeta;
-  in_retry     = 1;
-  pthread_mutex_unlock(&block_alloc_lock);
-  return block_alloc();
-}
-
-static void block_free(uint b) {
-  struct bcache_buf* bp;
-  int bi, m;
-
-  bp = logged_read(BBLOCK(b));
-  bi = b % BPB;
-  m  = 1 << (bi % 8);
-  if ((bp->data[bi / 8] & m) == 0) {
-    err_exit("freeing free block");
-  }
-  bp->data[bi / 8] &= ~m;
-  logged_write(bp);
-  logged_relse(bp);
 }
 
 static inline void assert_no_need_to_restart_op_in_imap2blockno() {

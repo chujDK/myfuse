@@ -2,7 +2,7 @@
 #include <sys/types.h>
 
 #define FSMAGIC 0x636a6673
-#define BSIZE 4096
+#define BSIZE ((unsigned long)(4096))
 #define MAXOPBLOCKS 127
 #define NCACHE_BUF (MAXOPBLOCKS * 8)
 #define NLOG (MAXOPBLOCKS * 8)

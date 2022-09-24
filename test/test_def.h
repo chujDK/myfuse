@@ -9,6 +9,7 @@ extern "C" {
 #include "log.h"
 #include "param.h"
 #include "inode.h"
+#include "block_allocator.h"
 #ifdef __cplusplus
 }
 #include <unistd.h>
@@ -31,7 +32,7 @@ void init_super_block();
 class TestEnvironment : public ::testing::Environment {
  public:
   void SetUp() override {
-    std::srand(std::time(nullptr));
+    srand(time(nullptr));
 
 #ifndef DISK_IMG_PATH
 #define DISK_IMG_PATH "./disk.img"
@@ -53,6 +54,11 @@ class TestEnvironment : public ::testing::Environment {
     log_init(&MYFUSE_STATE->sb);
 
     inode_init();
+    init_meta_blocks_bmap();
+    free(bmap_cache.cache_buf);
+    free(bmap_cache.first_unalloced);
+    free(bmap_cache.n_alloced);
+    block_allocator_init();
   }
 };
 

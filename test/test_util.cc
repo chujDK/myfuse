@@ -33,8 +33,8 @@ void generate_block_test_data() {
 
   for (int& i : content_blockno) {
     auto buf = new u_char[BSIZE];
-    for (int i = 0; i < BSIZE; i++) {
-      buf[i] = std::rand() % 0x100;
+    for (unsigned long i = 0; i < BSIZE; i++) {
+      buf[i] = rand() % 0x100;
     }
     contents[i] = buf;
   }
@@ -61,9 +61,10 @@ void start_worker(void* (*pthread_worker)(void*), uint MAX_WORKER,
 void init_super_block() {
   auto sb = &MYFUSE_STATE->sb;
 
-  const uint disk_size     = MAX_BLOCK_NO;
-  const uint nlog          = NLOG;
-  const uint nbitmap       = disk_size / (BSIZE * 8) + 1;
+  const uint disk_size = MAX_BLOCK_NO;
+  const uint nlog      = NLOG;
+  static_assert(disk_size % BPB != 0, "disk_size can't be BPB aligned!");
+  const uint nbitmap       = disk_size / BPB + 1;
   const uint ninode_blocks = ceil(disk_size / 100) + 1;
   const uint ninodes       = ninode_blocks * IPB;
   const uint nmeta_blocks  = 2 + nlog + ninode_blocks + nbitmap;

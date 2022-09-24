@@ -27,7 +27,7 @@ void* test_write_worker(void* _range) {
 void* test_read_worker(void*) {
   int read_times = content_sum / MAX_WORKER;
   for (int i = 0; i < read_times; i++) {
-    int blockno = content_blockno[std::rand() % content_sum];
+    int blockno = content_blockno[rand() % content_sum];
     auto b      = bread(blockno);
     int eq      = memcmp(b->data, contents[blockno], BSIZE);
     EXPECT_EQ(eq, 0);
