@@ -121,6 +121,7 @@ struct File {
       start += piece_hole_size;
       piece_size = ((size_t)rand() << 32 | rand()) % max_per_pieces_size + 1;
       if (start + piece_size > max_size) {
+        start -= piece_hole_size;
         break;
       }
       file->pieces.push_back(FilePiece::GenRandomPiece(start, piece_size));
@@ -134,7 +135,7 @@ struct File {
 };
 
 std::vector<File*> files;
-std::map<File*, struct inode*> file_to_inode;
+std::map<File*, uint> file_to_inum;
 std::map<uint, File*> inum_to_file;
 
 void* file_write_worker(void* _range) {
@@ -144,7 +145,7 @@ void* file_write_worker(void* _range) {
     auto file = files[i];
     begin_op();
     auto inode                = ialloc(T_FILE);
-    file_to_inode[file]       = inode;
+    file_to_inum[file]        = inode->inum;
     inum_to_file[inode->inum] = file;
     // manully link
     ilock(inode);
@@ -170,42 +171,34 @@ void* file_read_worker(void* _range) {
 
   for (uint i = range->start; i < range->end; i++) {
     auto file          = files[i];
-    auto inode         = file_to_inode[file];
-    auto inode_by_iget = iget(inode->inum);
-    EXPECT_EQ(inode, inode_by_iget);
-    // EXPECT_EQ(inode->inum, inode_by_iget->inum);
+    auto inum          = file_to_inum[file];
+    auto inode_by_iget = iget(inum);
+    EXPECT_EQ(inum, inode_by_iget->inum);
     for (auto piece : file->pieces) {
-      EXPECT_EQ(inode_read_nbytes_unlocked(inode, read_buf.data(), piece->size,
-                                           piece->start),
-                piece->size);
-
-      int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
-      EXPECT_EQ(eq, 0);
-
       EXPECT_EQ(inode_read_nbytes_unlocked(inode_by_iget, read_buf.data(),
                                            piece->size, piece->start),
                 piece->size);
 
-      eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
+      int eq = memcmp(read_buf.data(), piece->content.c_str(), piece->size);
       EXPECT_EQ(eq, 0);
     }
 
     struct stat_inode st;
-    stat_inode(inode, &st);
-    EXPECT_EQ(st.inum, inode->inum);
-    EXPECT_EQ(st.size, inode->size);
-    EXPECT_EQ(st.nlink, inode->nlink);
-    EXPECT_EQ(st.type, inode->type);
-    EXPECT_EQ(inode->type, T_FILE);
-    EXPECT_EQ(inode->size, file->file_tatol_size);
+    stat_inode(inode_by_iget, &st);
+    EXPECT_EQ(st.inum, inode_by_iget->inum);
+    EXPECT_EQ(st.size, inode_by_iget->size);
+    EXPECT_EQ(st.nlink, inode_by_iget->nlink);
+    EXPECT_EQ(st.type, inode_by_iget->type);
+    EXPECT_EQ(inode_by_iget->type, T_FILE);
+    EXPECT_EQ(inode_by_iget->size, file->file_tatol_size);
 
-    iput(inode);
     // manually unlink
+    begin_op();
     ilock(inode_by_iget);
     inode_by_iget->nlink--;
     iupdate(inode_by_iget);
-    iunlock(inode_by_iget);
-    iput(inode_by_iget);
+    iunlockput(inode_by_iget);
+    end_op();
   }
   return nullptr;
 }
@@ -357,7 +350,9 @@ TEST(inode, mutil_file_read_write_test) {
     files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
   }
 
-  start_worker(file_write_worker, MAX_WORKER, files.size());
+  start_worker(file_write_worker, 1, files.size());
+
+  start_worker(file_read_worker, 1, files.size());
 }
 
 int main(int argc, char* argv[]) {

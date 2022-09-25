@@ -23,7 +23,7 @@ void init_super_block(uint disk_size_in_sector_block) {
 
   const double ONEK = 1024.0;
   myfuse_log("this disk can have about %.2lf GiB storage",
-             ((nblocks * ONEK) / ONEK / ONEK / ONEK) * 0.98);
+             ((nblocks * BSIZE) / ONEK / ONEK / ONEK) * 0.98);
   printf(
       "nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) "
       "blocks %d total %d\n",
@@ -39,7 +39,9 @@ struct myfuse_state* get_myfuse_state() {
 void add_rootinode() {
   begin_op();
   auto ip = ialloc(T_DIR);
-  end_op();
 
   assert(ip->inum == ROOTINO);
+  ilock(ip);
+  iunlockput(ip);
+  end_op();
 }

@@ -35,6 +35,8 @@ class TestEnvironment : public ::testing::Environment {
     inode_init();
     init_meta_blocks_bmap();
     block_allocator_refresh();
+
+    add_rootinode();
   }
 };
 

@@ -51,7 +51,10 @@ static struct bcache_buf* bget(uint blockno) {
 
   for (b = bucket->head.next; b != &bucket->head; b = b->next) {
 #ifdef DEBUG
-    assert(bcache_hash(b->blockno) == hashid);
+    uint hash = bcache_hash(b->blockno);
+    if (hash != hashid) {
+      assert(bcache_hash(b->blockno) == hashid);
+    }
 #endif
     if (b->blockno == blockno) {
       b->refcnt++;

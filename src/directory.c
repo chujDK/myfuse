@@ -3,9 +3,11 @@
 #include <malloc.h>
 #include <inode.h>
 
-static int dirnamecmp(char* a, char* b) { return strncmp(a, b, DIRSIZE); }
+static int dirnamecmp(const char* a, const char* b) {
+  return strncmp(a, b, DIRSIZE);
+}
 
-struct inode* dirlookup(struct inode* dp, char* name, uint* poff) {
+struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
   struct dirent* de;
   char* buf = malloc(dp->size);
 
@@ -14,9 +16,14 @@ struct inode* dirlookup(struct inode* dp, char* name, uint* poff) {
     free(buf);
     err_exit("dirlookup: file is not a dir");
   }
+
+  // pthread_mutex_trylock: return 0 if not locked
+  if (!pthread_mutex_trylock(&dp->lock)) {
+    err_exit("dirlookup: dp is not locked");
+  }
 #endif
 
-  if (inode_read_nbytes_unlocked(dp, buf, dp->size, 0) != dp->size) {
+  if (inode_read_nbytes_locked(dp, buf, dp->size, 0) != dp->size) {
     free(buf);
     err_exit("dirlookup: failed to read dir");
   }
@@ -35,9 +42,9 @@ struct inode* dirlookup(struct inode* dp, char* name, uint* poff) {
   return NULL;
 }
 
-int dirlink(struct inode* dp, char* name, uint inum) {
-  int off;
-  struct dirent* de;
+int dirlink(struct inode* dp, const char* name, uint inum) {
+  int off           = 0;
+  struct dirent* de = NULL;
   struct inode* ip;
 
 #ifdef DEBUG
@@ -65,20 +72,26 @@ int dirlink(struct inode* dp, char* name, uint inum) {
 
   // Look for an empty dirent.
   // this is a userland program, we can do this to save time
-  char* buf = malloc(dp->size);
-  if (inode_read_nbytes_locked(ip, buf, dp->size, 0) != dp->size) {
-    free(buf);
-    err_exit("dirlink: read failed");
-  }
-  for (off = 0; off < dp->size; off += sizeof(*de)) {
-    de = (struct dirent*)&buf[off];
-    if (de->inum == 0) break;
+  char* buf = NULL;
+  if (dp->size) {
+    char* buf = malloc(dp->size);
+    if (inode_read_nbytes_locked(dp, buf, dp->size, 0) != dp->size) {
+      free(buf);
+      err_exit("dirlink: read failed");
+    }
+    for (off = 0; off < dp->size; off += sizeof(*de)) {
+      de = (struct dirent*)&buf[off];
+      if (de->inum == 0) break;
+    }
+  } else {
+    buf = malloc(sizeof(*de));
+    de  = (struct dirent*)buf;
   }
 
   strncpy(de->name, name, DIRSIZE);
   de->inum = inum;
-  if (inode_write_nbytes_locked(dp, (char*)&de, sizeof(de), off) !=
-      sizeof(de)) {
+  if (inode_write_nbytes_locked(dp, (char*)&de, sizeof(*de), off) !=
+      sizeof(*de)) {
     free(buf);
     err_exit("dirlink: write entry failed");
   }
@@ -102,8 +115,8 @@ int dirlink(struct inode* dp, char* name, uint inum) {
 //   skipelem("a", name) = "", setting name = "a"
 //   skipelem("", name) = skipelem("////", name) = 0
 //
-static char* skipelem(char* path, char* name) {
-  char* s;
+static const char* skipelem(const char* path, char* name) {
+  const char* s;
   int len;
 
   while (*path == '/') path++;
@@ -125,7 +138,7 @@ static char* skipelem(char* path, char* name) {
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
-static struct inode* namex(char* path, int nameiparent, char* name) {
+static struct inode* namex(const char* path, int nameiparent, char* name) {
   struct inode *ip, *next;
 
   if (*path == '/')
@@ -158,11 +171,11 @@ static struct inode* namex(char* path, int nameiparent, char* name) {
   return ip;
 }
 
-struct inode* path2inode(char* path) {
+struct inode* path2inode(const char* path) {
   char name[DIRSIZE];
   return namex(path, 0, name);
 }
 
-struct inode* path2parentinode(char* path, char* name) {
+struct inode* path2parentinode(const char* path, char* name) {
   return namex(path, 1, name);
 }
