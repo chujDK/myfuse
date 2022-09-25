@@ -40,10 +40,7 @@ void random_bmap_get_set() {
   }
 
   // persistent test
-  free(bmap_cache.cache_buf);
-  free(bmap_cache.first_unalloced);
-  free(bmap_cache.n_alloced);
-  block_allocator_init();
+  block_allocator_refresh();
   uint n_alloced              = 0;
   int first_unalloced         = -1;
   int first_unalloced_blockno = -1;
@@ -74,10 +71,7 @@ void random_bmap_get_set() {
     bmap_block_statue_set(i, 1);
     end_op();
   }
-  free(bmap_cache.cache_buf);
-  free(bmap_cache.first_unalloced);
-  free(bmap_cache.n_alloced);
-  block_allocator_init();
+  block_allocator_refresh();
   for (uint i = 0; i < bmap_cache.n_cache; i++) {
     EXPECT_EQ(bmap_cache.n_alloced[i], BPB);
     EXPECT_EQ(bmap_cache.first_unalloced[i], -1);
@@ -94,10 +88,7 @@ TEST(block_allocator, bmap_block_statue_get_set_test) {
     EXPECT_EQ(bmap_block_statue_get(i), 1);
   }
   // reinit to set the set's persistent
-  free(bmap_cache.cache_buf);
-  free(bmap_cache.first_unalloced);
-  free(bmap_cache.n_alloced);
-  block_allocator_init();
+  block_allocator_refresh();
   for (int i = 0; i < nmeta_blocks; i++) {
     EXPECT_EQ(bmap_block_statue_get(i), 1);
   }

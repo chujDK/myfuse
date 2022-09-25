@@ -4,19 +4,15 @@
 
 struct bmap_cache bmap_cache;
 
-void block_allocator_init() {
+void block_allocator_refresh() {
   // init the bmap cache
-  uint ncache_blocks;
-  if (MYFUSE_STATE->sb.size % BPB) {
-    ncache_blocks = MYFUSE_STATE->sb.size / BPB + 1;
-  } else {
-    ncache_blocks = MYFUSE_STATE->sb.size / BPB;
-  }
-  memset(&bmap_cache, 0, sizeof(bmap_cache));
-  bmap_cache.cache_buf       = calloc(1, ncache_blocks * BSIZE);
-  bmap_cache.first_unalloced = calloc(1, ncache_blocks);
-  bmap_cache.n_alloced       = calloc(1, ncache_blocks);
-  bmap_cache.n_cache         = ncache_blocks;
+  uint ncache_blocks   = ROUNDUP(MYFUSE_STATE->sb.size, BPB) / BPB;
+  bmap_cache.cache_buf = realloc(bmap_cache.cache_buf, ncache_blocks * BSIZE);
+  bmap_cache.first_unalloced =
+      realloc(bmap_cache.first_unalloced, ncache_blocks * sizeof(uint));
+  bmap_cache.n_alloced =
+      realloc(bmap_cache.n_alloced, ncache_blocks * sizeof(uint));
+  bmap_cache.n_cache = ncache_blocks;
   pthread_mutex_init(&bmap_cache.lock, NULL);
   begin_op();
   uint blockno    = 0;
@@ -28,7 +24,8 @@ void block_allocator_init() {
     logged_relse(bp);
 
     // get the first unalloced block and calc the sum of alloced blocks
-    int first_unalloced = -1;
+    int first_unalloced     = -1;
+    bmap_cache.n_alloced[i] = 0;
     for (uint j = 0; j < BPB; j++) {
       if (bmap_block_statue_get(blockno)) {
         bmap_cache.n_alloced[i]++;
@@ -101,7 +98,7 @@ void init_meta_blocks_bmap() {
   }
 }
 
-static void zero_a_block(uint bno) {
+void logged_zero_a_block(uint bno) {
   struct bcache_buf* bp = logged_read(bno);
   memset(bp->data, 0, BSIZE);
   logged_write(bp);
@@ -158,7 +155,7 @@ uint block_alloc() {
   pthread_mutex_unlock(&bmap_cache.lock);
 
   // fourth, zero the block and return
-  zero_a_block(victim_blockno);
+  logged_zero_a_block(victim_blockno);
   return victim_blockno;
 }
 

@@ -14,7 +14,7 @@ struct bmap_cache {
 
 extern struct bmap_cache bmap_cache;
 
-void block_allocator_init();
+void block_allocator_refresh();
 
 void bmap_block_statue_set(uint blockno, int i);
 int bmap_block_statue_get(uint blockno);
@@ -24,3 +24,5 @@ void init_meta_blocks_bmap();
 
 uint block_alloc();
 void block_free(uint blockno);
+
+void logged_zero_a_block(uint blockno);

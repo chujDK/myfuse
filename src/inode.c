@@ -24,7 +24,8 @@ int inode_init() {
 
   pthread_mutex_init(&block_alloc_lock, NULL);
 
-  block_allocator_init();
+  memset(&bmap_cache, 0, sizeof(bmap_cache));
+  block_allocator_refresh();
   return 0;
 }
 

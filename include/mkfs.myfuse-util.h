@@ -16,6 +16,11 @@ extern "C" {
 #include <cstdlib>
 #include <array>
 
+const int sector_size      = 512;
+const int sector_per_block = BSIZE / sector_size;
+
 struct myfuse_state* get_myfuse_state();
 
 void init_super_block(uint disk_size_in_sector_block);
+
+void add_rootinode();
