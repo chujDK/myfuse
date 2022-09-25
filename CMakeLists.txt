@@ -22,8 +22,10 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND UseTmpfs MATCHES ON AND EXISTS ${TmpfsPath})
   MESSAGE("use tmpfs (ramdisk) to bump the test speed")
   add_compile_definitions(DISK_IMG_PATH="${TmpfsPath}/myfuse/disk.img")
+  set(DISK_IMG_PATH "${TmpfsPath}/myfuse/disk.img")
 else()
   add_compile_definitions(DISK_IMG_PATH="${CMAKE_BINARY_DIR}/test/disk.img")
+  set(DISK_IMG_PATH "${CMAKE_BINARY_DIR}/test/disk.img")
 endif()
 
 

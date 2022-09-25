@@ -2,9 +2,9 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(GTest REQUIRED)
 include_directories(PUBLIC ${GTEST_INCLUDE_DIRS})
 
-add_custom_command(OUTPUT disk.img
-COMMAND dd if=/dev/zero of=disk.img bs=512 count=400000)
-add_custom_target(BuildDisk ALL DEPENDS disk.img)
+add_custom_command(OUTPUT ${DISK_IMG_PATH}
+COMMAND dd if=/dev/zero of=${DISK_IMG_PATH} bs=512 count=400000)
+add_custom_target(BuildDisk ALL DEPENDS ${DISK_IMG_PATH})
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)

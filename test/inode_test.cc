@@ -346,7 +346,7 @@ TEST(inode, parrallel_block_aligned_read_write_test) {
 }
 
 TEST(inode, mutil_file_read_write_test) {
-  const int total_files = 50;
+  const int total_files = 100;
 
   files.reserve(total_files);
   // create 500 files

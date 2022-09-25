@@ -9,6 +9,7 @@
 
 struct myfuse_state {
   struct superblock sb;
+  struct inode* cwd;  // current working directory
 };
 
 struct options {
