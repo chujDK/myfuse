@@ -15,7 +15,7 @@ target_include_directories(test_lib_base PUBLIC ${FUSE3_INCLUDE_DIRS})
 
 macro(gtest_target target)
   add_executable(${target}_test ${target}_test.cc)
-  target_link_libraries(${target}_test test_lib_base)
+  target_link_libraries(${target}_test test_lib_base mkfs_lib)
   gtest_discover_tests(${target}_test)
 
   if (CMAKE_BUILD_TYPE MATCHES Debug)

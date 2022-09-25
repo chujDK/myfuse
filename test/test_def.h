@@ -1,21 +1,6 @@
 #pragma once
 #include <gtest/gtest.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "block_device.h"
-#include "buf_cache.h"
-#include "util.h"
-#include "log.h"
-#include "param.h"
-#include "inode.h"
-#include "block_allocator.h"
-#ifdef __cplusplus
-}
-#include <unistd.h>
-#include <cstdlib>
-#include <array>
-#endif
+#include "mkfs.myfuse-util.h"
 
 #define MAX_SECTOR_BLOCK_NO 400000
 const int sector_size      = 512;
@@ -24,10 +9,6 @@ static_assert(MAX_SECTOR_BLOCK_NO % sector_per_block == 0,
               "test disk unaligned!");
 #define MAX_BLOCK_NO MAX_SECTOR_BLOCK_NO / sector_per_block
 extern int nmeta_blocks;
-
-struct myfuse_state* get_myfuse_state();
-
-void init_super_block();
 
 class TestEnvironment : public ::testing::Environment {
  public:
@@ -39,7 +20,7 @@ class TestEnvironment : public ::testing::Environment {
 #endif
     block_device_init(DISK_IMG_PATH);
 
-    init_super_block();
+    init_super_block(MAX_BLOCK_NO);
 
     nmeta_blocks = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
     std::array<u_char, BSIZE> zeros;

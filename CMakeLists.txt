@@ -49,5 +49,8 @@ target_include_directories(myfuse PUBLIC ${FUSE3_INCLUDE_DIRS})
 target_include_directories(myfuse_static_base PUBLIC ${FUSE3_INCLUDE_DIRS})
 target_link_libraries(myfuse PUBLIC ${FUSE3_LIBRARIES} myfuse_static_base)
 
+add_library(mkfs_lib STATIC ${CMAKE_SOURCE_DIR}/mkfs/mkfs.myfuse-util.cc)
+target_include_directories(mkfs_lib PUBLIC ${CMAKE_SOURCE_DIR}/include PUBLIC ${FUSE3_INCLUDE_DIRS} myfuse_static_base)
+
 add_subdirectory(mkfs)
 add_subdirectory(test)
