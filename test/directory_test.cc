@@ -26,8 +26,8 @@ TEST(directory, dir_link_lookup_test) {
   iput(rootdp);
 
   // second, generate lots of paths
-  const int name_sum       = 1000;
-  const int max_paths      = 10000;
+  const int name_sum       = 100;
+  const int max_paths      = 2000;
   const int max_path_depth = MAXOPBLOCKS / 6 + 5;
   std::set<std::string> names_set;
   while (names_set.size() < name_sum) {
@@ -50,25 +50,40 @@ TEST(directory, dir_link_lookup_test) {
   const std::vector<Path> paths(paths_set.begin(), paths_set.end());
 
   std::map<Path, uint> path2inum;
+  std::map<Path, uint> path2parentinum;
 
   for (const auto& path : paths) {
-    begin_op();
-    auto ip         = ialloc(T_DIR);
-    std::string cwd = "/";
-    uint last_inum  = 0;
+    std::string cwd       = "/";
+    uint last_inum        = ROOTINO;
+    uint last_parent_inum = ROOTINO;
     for (const auto& name : path) {
-      auto dp = path2inode(cwd.c_str());
-      ASSERT_NE(dp, nullptr);
-      ilock(dp);
-      dirlink(dp, name.c_str(), ip->inum);
-      cwd += name;
-      cwd += "/";
-      last_inum = dp->inum;
-      iunlockput(dp);
+      std::string next_cwd = (cwd + "/").append(name);
+      begin_op();
+      auto ip = path2inode(next_cwd.c_str());
+      if (ip == nullptr) {
+        ip = ialloc(T_DIR);
+        ilock(ip);
+        ip->nlink++;
+        iupdate(ip);
+        auto dp = path2inode(cwd.c_str());
+        ASSERT_NE(dp, nullptr);
+        EXPECT_EQ(last_inum, dp->inum);
+        ilock(dp);
+        dirlink(dp, name.c_str(), ip->inum);
+        last_parent_inum = dp->inum;
+        iunlockput(dp);
+        iunlock(ip);
+      }
+      ASSERT_NE(ip, nullptr);
+      last_inum = ip->inum;
+      iput(ip);
+      end_op();
+      cwd = next_cwd;
     }
     ASSERT_NE(last_inum, 0);
-    path2inum[path] = last_inum;
-    iput(ip);
+    path2inum[path]       = last_inum;
+    path2parentinum[path] = last_parent_inum;
+    begin_op();
     end_op();
   }
 
@@ -80,11 +95,19 @@ TEST(directory, dir_link_lookup_test) {
       last_dir += name;
     }
 
-    auto dp = path2inode("/");
-    uint poff;
-    auto found_dp = dirlookup(dp, last_dir.c_str(), &poff);
+    begin_op();
+    auto found_dp = path2inode(last_dir.c_str());
+    std::array<char, DIRSIZE> last_name;
+    auto found_pdp = path2parentinode(last_dir.c_str(), last_name.data());
     ASSERT_NE(found_dp, nullptr);
+    ASSERT_NE(found_pdp, nullptr);
     EXPECT_EQ(found_dp->inum, path2inum[path]);
+    EXPECT_EQ(found_pdp->inum, path2parentinum[path]);
+    EXPECT_EQ(strncmp(last_name.data(), path[path.size() - 1].c_str(), DIRSIZE),
+              0);
+    iput(found_dp);
+    iput(found_pdp);
+    end_op();
   }
 }
 

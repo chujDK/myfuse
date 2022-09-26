@@ -90,7 +90,7 @@ int dirlink(struct inode* dp, const char* name, uint inum) {
 
   strncpy(de->name, name, DIRSIZE);
   de->inum = inum;
-  if (inode_write_nbytes_locked(dp, (char*)&de, sizeof(*de), off) !=
+  if (inode_write_nbytes_locked(dp, (char*)de, sizeof(*de), off) !=
       sizeof(*de)) {
     free(buf);
     err_exit("dirlink: write entry failed");

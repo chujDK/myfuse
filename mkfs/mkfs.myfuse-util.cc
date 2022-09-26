@@ -42,6 +42,8 @@ void add_rootinode() {
 
   assert(ip->inum == ROOTINO);
   ilock(ip);
+  ip->nlink = 1;
+  iupdate(ip);
   iunlockput(ip);
   end_op();
 }
