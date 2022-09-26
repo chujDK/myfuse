@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <malloc.h>
 #include <inode.h>
+#include <assert.h>
 
 static int dirnamecmp(const char* a, const char* b) {
   return strncmp(a, b, DIRSIZE);
@@ -136,6 +137,19 @@ static const char* skipelem(const char* path, char* name) {
   }
   while (*path == '/') path++;
   return path;
+}
+
+const char* skiptoend(const char* path) {
+  char name[DIRSIZE];
+  const char* elem;
+  const char* last_elem;
+  for (elem = skipelem(path, name); elem; elem = skipelem(elem, name)) {
+    last_elem = elem;
+  }
+
+  DEBUG_TEST(assert(dirnamecmp(last_elem, name) == 0););
+
+  return last_elem;
 }
 
 // Look up and return the inode for a path name.

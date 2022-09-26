@@ -37,6 +37,8 @@ class TestEnvironment : public ::testing::Environment {
     block_allocator_refresh(&MYFUSE_STATE->sb);
 
     add_rootinode();
+
+    file_init();
   }
 };
 

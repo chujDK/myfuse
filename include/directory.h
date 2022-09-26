@@ -21,3 +21,5 @@ struct inode* path2parentinode(const char* path, char* name);
 void dirnamencpy(char* a, const char* b);
 
 void dirnamecpy(char* a, const char* b);
+
+const char* skiptoend(const char* path);

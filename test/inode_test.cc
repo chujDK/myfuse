@@ -345,7 +345,7 @@ TEST(inode, mutil_file_read_write_test) {
   const int total_files = 100;
 
   files.reserve(total_files);
-  // create 500 files
+  // create ${total_files} files
   for (int i = 0; i < total_files / 2; i++) {
     files.push_back(File::GenRandomFile());
   }
@@ -353,9 +353,9 @@ TEST(inode, mutil_file_read_write_test) {
     files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
   }
 
-  start_worker(file_write_worker, 1, files.size());
+  start_worker(file_write_worker, MAX_WORKER, files.size());
 
-  start_worker(file_read_worker, 1, files.size());
+  start_worker(file_read_worker, MAX_WORKER, files.size());
 }
 
 int main(int argc, char* argv[]) {

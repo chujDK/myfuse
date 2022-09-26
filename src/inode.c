@@ -39,7 +39,7 @@ static void itable_grow() {
       realloc(itable.inode, sizeof(struct inode*) * itable.ninode * 2);
   itable.ninode *= 2;
   for (int i = itable.ninode / 2; i < itable.ninode; i++) {
-    itable.inode[i] = malloc(sizeof(struct inode));
+    itable.inode[i] = calloc(1, sizeof(struct inode));
     pthread_mutex_init(&itable.inode[i]->lock, NULL);
   }
 }
@@ -483,17 +483,14 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
 
 long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
                               size_t off) {
-  if (off > MAXFILE_SIZE) {
+  if (off > ip->size) {
     return 0;
   }
 
-  if (off + nbytes > MAXFILE_SIZE) {
-    nbytes -= (off + nbytes - MAXFILE_SIZE);
+  if (off + nbytes > ip->size) {
+    nbytes -= (off + nbytes - ip->size);
   }
   size_t n_read = nbytes;
-
-  // update size
-  ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
 
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;

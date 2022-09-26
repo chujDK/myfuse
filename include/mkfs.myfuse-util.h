@@ -9,6 +9,7 @@ extern "C" {
 #include "inode.h"
 #include "block_allocator.h"
 #include "directory.h"
+#include "file.h"
 #ifdef __cplusplus
 }
 #endif

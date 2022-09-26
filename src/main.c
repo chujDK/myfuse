@@ -46,9 +46,15 @@ static void show_help(const char* progname) {
 }
 
 static const struct fuse_operations myfuse_oper = {
-    .init    = myfuse_init,
-    .getattr = myfuse_getattr,
-    .readdir = myfuse_readdir,
+    .init       = myfuse_init,
+    .getattr    = myfuse_getattr,
+    .readdir    = myfuse_readdir,
+    .open       = myfuse_open,
+    .opendir    = myfuse_opendir,
+    .release    = myfuse_release,
+    .releasedir = myfuse_releasedir,
+    .mkdir      = myfuse_mkdir,
+    .unlink     = myfuse_unlink,
 };
 
 #ifdef VERBOSE
@@ -113,6 +119,8 @@ void* myfuse_init(struct fuse_conn_info* conn, struct fuse_config* config) {
   log_init(&state->sb);
 
   inode_init(&state->sb);
+
+  file_init();
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;

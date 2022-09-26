@@ -45,8 +45,9 @@ void add_rootinode() {
   ip->nlink = 1;
   ip->type  = T_DIR_INODE_MYFUSE;
   iupdate(ip);
-  dirlink(ip, ".", ip->inum);
-  dirlink(ip, "..", ip->inum);
+  // fuse need no . or ..
+  //  dirlink(ip, ".", ip->inum);
+  //  dirlink(ip, "..", ip->inum);
   iunlockput(ip);
   end_op();
 }
