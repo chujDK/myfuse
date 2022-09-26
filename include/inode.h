@@ -68,7 +68,7 @@
 // read or write that inode's ip->valid, ip->size, ip->type, &c.
 #pragma once
 #include "param.h"
-#include <pthread.h>
+#include <fcntl.h>
 
 // in-memory copy of an inode
 struct inode {
@@ -85,16 +85,11 @@ struct inode {
   uint addrs[NDIRECT + NSUBDIRECT];
 };
 
-struct stat_inode {
-  uint inum;      // Inode number
-  short type;     // Type of file
-  short nlink;    // Number of links to file
-  uint64_t size;  // Size of file in bytes
-};
+int stat_inode(struct inode* ip, struct stat* st);
 
-void stat_inode(struct inode* ip, struct stat_inode* st);
+int stat_inum(uint inum, struct stat* st);
 
-int inode_init();
+int inode_init(struct superblock* sb);
 
 void iunlockput(struct inode* ip);
 

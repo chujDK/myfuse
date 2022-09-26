@@ -3,7 +3,7 @@
 //
 
 // fs layers
-// |         fd          |
+// |        file         |
 // |      path name      |
 // |      directory      |
 // |        inode        |
@@ -19,7 +19,7 @@
 #include <malloc.h>
 
 #include "param.h"
-#include "names_fds.h"
+#include "file.h"
 #include "directory.h"
 #include "inode.h"
 #include "log.h"
@@ -46,7 +46,9 @@ static void show_help(const char* progname) {
 }
 
 static const struct fuse_operations myfuse_oper = {
-    .init = myfuse_init,
+    .init    = myfuse_init,
+    .getattr = myfuse_getattr,
+    .readdir = myfuse_readdir,
 };
 
 #ifdef VERBOSE
@@ -110,7 +112,7 @@ void* myfuse_init(struct fuse_conn_info* conn, struct fuse_config* config) {
 
   log_init(&state->sb);
 
-  inode_init();
+  inode_init(&state->sb);
 
   myfuse_log("fs init done; size %d", state->sb.size);
   return state;

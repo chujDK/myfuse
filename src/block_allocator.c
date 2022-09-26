@@ -4,9 +4,9 @@
 
 struct bmap_cache bmap_cache;
 
-void block_allocator_refresh() {
+void block_allocator_refresh(struct superblock* sb) {
   // init the bmap cache
-  uint ncache_blocks   = ROUNDUP(MYFUSE_STATE->sb.size, BPB) / BPB;
+  uint ncache_blocks   = ROUNDUP(sb->size, BPB) / BPB;
   bmap_cache.cache_buf = realloc(bmap_cache.cache_buf, ncache_blocks * BSIZE);
   bmap_cache.first_unalloced =
       realloc(bmap_cache.first_unalloced, ncache_blocks * sizeof(uint));
@@ -18,7 +18,7 @@ void block_allocator_refresh() {
   uint blockno    = 0;
   uint first_free = 0;
   for (uint i = 0; i < ncache_blocks; i++) {
-    struct bcache_buf* bp = logged_read(i + MYFUSE_STATE->sb.bmapstart);
+    struct bcache_buf* bp = logged_read(i + sb->bmapstart);
 
     memmove(bmap_cache.cache_buf + i * BSIZE, bp->data, BSIZE);
     logged_relse(bp);

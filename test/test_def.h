@@ -32,9 +32,9 @@ class TestEnvironment : public ::testing::Environment {
     bcache_init();
     log_init(&MYFUSE_STATE->sb);
 
-    inode_init();
+    inode_init(&MYFUSE_STATE->sb);
     init_meta_blocks_bmap();
-    block_allocator_refresh();
+    block_allocator_refresh(&MYFUSE_STATE->sb);
 
     add_rootinode();
   }

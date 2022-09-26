@@ -144,7 +144,7 @@ void* file_write_worker(void* _range) {
   for (uint i = range->start; i < range->end; i++) {
     auto file = files[i];
     begin_op();
-    auto inode                = ialloc(T_FILE);
+    auto inode                = ialloc(T_FILE_INODE_MYFUSE);
     file_to_inum[file]        = inode->inum;
     inum_to_file[inode->inum] = file;
     // manully link
@@ -183,13 +183,16 @@ void* file_read_worker(void* _range) {
       EXPECT_EQ(eq, 0);
     }
 
-    struct stat_inode st;
+    struct stat st;
+    ilock(inode_by_iget);
     stat_inode(inode_by_iget, &st);
-    EXPECT_EQ(st.inum, inode_by_iget->inum);
-    EXPECT_EQ(st.size, inode_by_iget->size);
-    EXPECT_EQ(st.nlink, inode_by_iget->nlink);
-    EXPECT_EQ(st.type, inode_by_iget->type);
-    EXPECT_EQ(inode_by_iget->type, T_FILE);
+    iunlock(inode_by_iget);
+    EXPECT_EQ(st.st_size, inode_by_iget->size);
+    EXPECT_EQ(st.st_nlink, inode_by_iget->nlink);
+    stat_inum(inode_by_iget->inum, &st);
+    EXPECT_EQ(st.st_size, inode_by_iget->size);
+    EXPECT_EQ(st.st_nlink, inode_by_iget->nlink);
+    EXPECT_EQ(inode_by_iget->type, T_FILE_INODE_MYFUSE);
     EXPECT_EQ(inode_by_iget->size, file->file_tatol_size);
 
     // manually unlink
@@ -209,7 +212,7 @@ TEST(inode, truncate_test) {
   std::array<char, BSIZE> ones;
   ones.fill(1);
   begin_op();
-  auto fill_all_disk_file = ialloc(T_FILE);
+  auto fill_all_disk_file = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
   for (uint i = 0; i < (uint)((MAX_BLOCK_NO - nmeta_blocks) * 0.9); i++) {
     inode_write_nbytes_unlocked(fill_all_disk_file, ones.data(), BSIZE,
@@ -224,7 +227,7 @@ TEST(inode, unaligned_random_read_write_test) {
   write_max_size = MAXOPBLOCKS * BSIZE;
   read_max_size  = MAXOPBLOCKS * BSIZE;
   begin_op();
-  single_inode = ialloc(T_FILE);
+  single_inode = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
 
   for (char& c : big_file_content) {
@@ -244,7 +247,7 @@ TEST(inode, big_unaligned_random_read_write_test) {
   write_max_size = MAXOPBLOCKS * 10 * BSIZE;
   read_max_size  = MAXOPBLOCKS * 10 * BSIZE;
   begin_op();
-  single_inode = ialloc(T_FILE);
+  single_inode = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
 
   for (char& c : big_file_content) {
@@ -265,7 +268,7 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
   read_max_size  = MAXOPBLOCKS * 10 * BSIZE;
 
   begin_op();
-  single_inode = ialloc(T_FILE);
+  single_inode = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
 
   for (char& c : big_file_content) {
@@ -283,7 +286,7 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
 
 TEST(inode, single_big_read_write_test) {
   begin_op();
-  single_inode = ialloc(T_FILE);
+  single_inode = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
 
   for (char& c : big_file_content) {
@@ -305,7 +308,7 @@ TEST(inode, single_big_read_write_test) {
 
 TEST(inode, parrallel_block_aligned_read_write_test) {
   begin_op();
-  single_inode = ialloc(T_FILE);
+  single_inode = ialloc(T_FILE_INODE_MYFUSE);
   end_op();
 
   for (char& c : big_file_content) {

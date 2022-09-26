@@ -4,6 +4,9 @@
 #endif
 #include "fuse.h"
 #include <stdarg.h>
+#include <stddef.h>
+#include <execinfo.h>
+#include <unistd.h>
 
 void err_exit(const char* msg, ...) {
   char buf[128] = "\033[1;91m[-]\033[0m \033[91mmyfuse fatal error:\033[0m ";
@@ -13,6 +16,17 @@ void err_exit(const char* msg, ...) {
   strncat(buf, "\n", 127);
   vfprintf(stderr, buf, arg);
   va_end(arg);
+
+  void* array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "back trace:\n");
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+
   exit(1);
 }
 

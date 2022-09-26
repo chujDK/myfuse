@@ -61,7 +61,7 @@ TEST(directory, dir_link_lookup_test) {
       begin_op();
       auto ip = path2inode(next_cwd.c_str());
       if (ip == nullptr) {
-        ip = ialloc(T_DIR);
+        ip = ialloc(T_DIR_INODE_MYFUSE);
         ilock(ip);
         ip->nlink++;
         iupdate(ip);
@@ -89,16 +89,17 @@ TEST(directory, dir_link_lookup_test) {
 
   // validate
   for (const Path& path : paths) {
-    std::string last_dir = "";
+    std::string lasT_DIR_INODE_MYFUSE = "";
     for (const auto& name : path) {
-      last_dir += "/";
-      last_dir += name;
+      lasT_DIR_INODE_MYFUSE += "/";
+      lasT_DIR_INODE_MYFUSE += name;
     }
 
     begin_op();
-    auto found_dp = path2inode(last_dir.c_str());
+    auto found_dp = path2inode(lasT_DIR_INODE_MYFUSE.c_str());
     std::array<char, DIRSIZE> last_name;
-    auto found_pdp = path2parentinode(last_dir.c_str(), last_name.data());
+    auto found_pdp =
+        path2parentinode(lasT_DIR_INODE_MYFUSE.c_str(), last_name.data());
     ASSERT_NE(found_dp, nullptr);
     ASSERT_NE(found_pdp, nullptr);
     EXPECT_EQ(found_dp->inum, path2inum[path]);

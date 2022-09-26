@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
   auto blockdev_reslut = popen(blockdev_command.c_str(), "r");
   uint sector_size;
   fscanf(blockdev_reslut, "%u", &sector_size);
+  myfuse_log("sector size: %d", sector_size);
   pclose(blockdev_reslut);
 
   uint block_size = sector_size / sector_per_block;
@@ -58,7 +59,7 @@ int main(int argc, char* argv[]) {
     err_exit("block size too small");
   }
   block_device_init(disk_name.c_str());
-  init_super_block(sector_size);
+  init_super_block(block_size);
   std::array<u_char, BSIZE> zeros;
   uint nmeta_blocks = MYFUSE_STATE->sb.size - MYFUSE_STATE->sb.nblocks;
   zeros.fill(0);
@@ -71,15 +72,24 @@ int main(int argc, char* argv[]) {
   bcache_init();
   log_init(&MYFUSE_STATE->sb);
 
-  inode_init();
+  inode_init(&MYFUSE_STATE->sb);
 
   for (uint i = 0; i < ROUNDUP(MYFUSE_STATE->sb.size, BPB) / BPB; i++) {
     begin_op();
     logged_zero_a_block(MYFUSE_STATE->sb.bmapstart + i);
     end_op();
   }
-  block_allocator_refresh();
+  block_allocator_refresh(&MYFUSE_STATE->sb);
   init_meta_blocks_bmap();
+  block_allocator_refresh(&MYFUSE_STATE->sb);
+
+  // write sb to disk
+  begin_op();
+  auto sbi = logged_read(1);
+  memmove(sbi->data, &MYFUSE_STATE->sb, sizeof(struct superblock));
+  logged_write(sbi);
+  logged_relse(sbi);
+  end_op();
 
   add_rootinode();
 

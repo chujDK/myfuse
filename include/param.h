@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "pthread.h"
 #include "util.h"
-#define BCACHE_HASH_SIZE 31
+#define BCACHE_HASH_SIZE 29
 
 struct myfuse_state {
   struct superblock sb;

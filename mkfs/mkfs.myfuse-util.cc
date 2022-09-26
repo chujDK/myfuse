@@ -38,12 +38,15 @@ struct myfuse_state* get_myfuse_state() {
 
 void add_rootinode() {
   begin_op();
-  auto ip = ialloc(T_DIR);
+  auto ip = ialloc(T_DIR_INODE_MYFUSE);
 
   assert(ip->inum == ROOTINO);
   ilock(ip);
   ip->nlink = 1;
+  ip->type  = T_DIR_INODE_MYFUSE;
   iupdate(ip);
+  dirlink(ip, ".", ip->inum);
+  dirlink(ip, "..", ip->inum);
   iunlockput(ip);
   end_op();
 }

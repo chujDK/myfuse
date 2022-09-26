@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <malloc.h>
 #include <assert.h>
+#include <errno.h>
 #include "log.h"
 #include "block_allocator.h"
 
@@ -13,7 +14,7 @@ struct {
 
 pthread_mutex_t block_alloc_lock;
 
-int inode_init() {
+int inode_init(struct superblock* sb) {
   pthread_spin_init(&itable.lock, 1);
 #define NINODE_INIT 30
   itable.ninode = NINODE_INIT;
@@ -25,7 +26,7 @@ int inode_init() {
   pthread_mutex_init(&block_alloc_lock, NULL);
 
   memset(&bmap_cache, 0, sizeof(bmap_cache));
-  block_allocator_refresh();
+  block_allocator_refresh(sb);
   return 0;
 }
 
@@ -78,7 +79,7 @@ struct inode* ialloc(short type) {
   for (int inum = 1; inum < MYFUSE_STATE->sb.ninodes; inum++) {
     bp  = logged_read(IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum % IPB;
-    if (dip->type == T_UNUSE) {
+    if (dip->type == T_UNUSE_INODE_MYFUSE) {
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
       logged_write(bp);
@@ -126,7 +127,7 @@ void ilock(struct inode* ip) {
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     logged_relse(bp);
     ip->valid = 1;
-    if (ip->type == T_UNUSE) {
+    if (ip->type == T_UNUSE_INODE_MYFUSE) {
       err_exit("ilock: ip is unused");
     }
   }
@@ -180,7 +181,7 @@ void iput(struct inode* ip) {
     pthread_spin_unlock(&itable.lock);
 
     itrunc(ip);
-    ip->type = T_UNUSE;
+    ip->type = T_UNUSE_INODE_MYFUSE;
     iupdate(ip);
     ip->valid = 0;
     pthread_mutex_unlock(&ip->lock);
@@ -549,9 +550,33 @@ long inode_read_nbytes_unlocked(struct inode* ip, char* data, size_t bytes,
   return nbytes;
 }
 
-void stat_inode(struct inode* ip, struct stat_inode* st) {
-  st->inum  = ip->inum;
-  st->nlink = ip->nlink;
-  st->size  = ip->size;
-  st->type  = ip->type;
+int stat_inode(struct inode* ip, struct stat* st) {
+  int res      = 0;
+  st->st_nlink = ip->nlink;
+  st->st_size  = ip->size;
+  switch (ip->type) {
+    case T_DIR_INODE_MYFUSE:
+      st->st_mode = S_IFDIR | 0755;
+      break;
+    case T_FILE_INODE_MYFUSE:
+      st->st_mode = S_IFREG | 0644;
+      break;
+    case T_DEVICE_INODE_MYFUSE:
+      myfuse_log("`inum %d' is device, not supported", ip->inum);
+      res = -ENOENT;
+      break;
+    default:
+      myfuse_log("inum `%d' has unknow type", ip->inum);
+      res = -ENOENT;
+      break;
+  }
+  return res;
+}
+
+int stat_inum(uint inum, struct stat* st) {
+  struct inode* ip = iget(inum);
+  ilock(ip);
+  int res = stat_inode(ip, st);
+  iunlockput(ip);
+  return res;
 }

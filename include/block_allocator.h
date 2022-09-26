@@ -14,7 +14,7 @@ struct bmap_cache {
 
 extern struct bmap_cache bmap_cache;
 
-void block_allocator_refresh();
+void block_allocator_refresh(struct superblock* sb);
 
 void bmap_block_statue_set(uint blockno, int i);
 int bmap_block_statue_get(uint blockno);

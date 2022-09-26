@@ -17,3 +17,7 @@ struct inode* dirlookup(struct inode* dp, const char* name, uint* poff);
 struct inode* path2inode(const char* path);
 
 struct inode* path2parentinode(const char* path, char* name);
+
+void dirnamencpy(char* a, const char* b);
+
+void dirnamecpy(char* a, const char* b);

@@ -7,12 +7,16 @@ static int dirnamecmp(const char* a, const char* b) {
   return strncmp(a, b, DIRSIZE);
 }
 
+void dirnamencpy(char* a, const char* b) { memmove(a, b, DIRSIZE); }
+
+void dirnamecpy(char* a, const char* b) { strcpy(a, b); }
+
 struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
   struct dirent* de;
   char* buf = malloc(dp->size);
 
 #ifdef DEBUG
-  if (dp->type != T_DIR) {
+  if (dp->type != T_DIR_INODE_MYFUSE) {
     free(buf);
     err_exit("dirlookup: file is not a dir");
   }
@@ -54,7 +58,7 @@ int dirlink(struct inode* dp, const char* name, uint inum) {
   }
 
   // test the inode is a directory
-  if (dp->type != T_DIR) {
+  if (dp->type != T_DIR_INODE_MYFUSE) {
     err_exit("dirlink called with non-directory inode");
   }
 
@@ -148,7 +152,7 @@ static struct inode* namex(const char* path, int nameiparent, char* name) {
 
   while ((path = skipelem(path, name)) != 0) {
     ilock(ip);
-    if (ip->type != T_DIR) {
+    if (ip->type != T_DIR_INODE_MYFUSE) {
       iunlockput(ip);
       return 0;
     }

@@ -42,8 +42,8 @@ struct superblock {
 struct dinode {
   short type;  // File type
   // currently we don't consider the device case
-  short major;             // Major device number (T_DEVICE only)
-  short minor;             // Minor device number (T_DEVICE only)
+  short major;             // Major device number (T_DEVICE_INODE_MYFUSE only)
+  short minor;             // Minor device number (T_DEVICE_INODE_MYFUSE only)
   short nlink;             // Number of links to inode in file system
   uint size;               // Size of file (bytes)
   uint addrs[NBLOCKADDR];  // Data block addresses  short type;
@@ -71,7 +71,7 @@ struct dirent {
 #define MAX_DIRENT_PERDIR (BSIZE / sizeof(dirent))
 
 // internal used inode type
-#define T_UNUSE 0
-#define T_DIR 1
-#define T_FILE 2
-#define T_DEVICE 3
+#define T_UNUSE_INODE_MYFUSE 0
+#define T_DIR_INODE_MYFUSE 1
+#define T_FILE_INODE_MYFUSE 2
+#define T_DEVICE_INODE_MYFUSE 3

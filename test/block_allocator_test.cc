@@ -40,7 +40,7 @@ void random_bmap_get_set() {
   }
 
   // persistent test
-  block_allocator_refresh();
+  block_allocator_refresh(&MYFUSE_STATE->sb);
   uint n_alloced              = 0;
   int first_unalloced         = -1;
   int first_unalloced_blockno = -1;
@@ -71,7 +71,7 @@ void random_bmap_get_set() {
     bmap_block_statue_set(i, 1);
     end_op();
   }
-  block_allocator_refresh();
+  block_allocator_refresh(&MYFUSE_STATE->sb);
   for (uint i = 0; i < bmap_cache.n_cache; i++) {
     EXPECT_EQ(bmap_cache.n_alloced[i], BPB);
     EXPECT_EQ(bmap_cache.first_unalloced[i], -1);
@@ -88,7 +88,7 @@ TEST(block_allocator, bmap_block_statue_get_set_test) {
     EXPECT_EQ(bmap_block_statue_get(i), 1);
   }
   // reinit to set the set's persistent
-  block_allocator_refresh();
+  block_allocator_refresh(&MYFUSE_STATE->sb);
   for (int i = 0; i < nmeta_blocks; i++) {
     EXPECT_EQ(bmap_block_statue_get(i), 1);
   }
