@@ -9,7 +9,7 @@
 struct {
   pthread_spinlock_t lock;
   size_t ninode;
-  struct inode* inode;
+  struct inode** inode;
 } itable;
 
 pthread_mutex_t block_alloc_lock;
@@ -18,9 +18,10 @@ int inode_init(struct superblock* sb) {
   pthread_spin_init(&itable.lock, 1);
 #define NINODE_INIT 30
   itable.ninode = NINODE_INIT;
-  itable.inode  = malloc(sizeof(struct inode) * NINODE_INIT);
+  itable.inode  = malloc(sizeof(struct inode*) * NINODE_INIT);
   for (int i = 0; i < NINODE_INIT; i++) {
-    pthread_mutex_init(&itable.inode[i].lock, NULL);
+    itable.inode[i] = malloc(sizeof(struct inode));
+    pthread_mutex_init(&itable.inode[i]->lock, NULL);
   }
 
   pthread_mutex_init(&block_alloc_lock, NULL);
@@ -34,10 +35,12 @@ static void itable_grow() {
   if (!pthread_spin_trylock(&itable.lock)) {
     err_exit("itable_grow called no within itable locked");
   }
+  itable.inode =
+      realloc(itable.inode, sizeof(struct inode*) * itable.ninode * 2);
   itable.ninode *= 2;
-  itable.inode = realloc(itable.inode, sizeof(struct inode) * itable.ninode);
   for (int i = itable.ninode / 2; i < itable.ninode; i++) {
-    pthread_mutex_init(&itable.inode[i].lock, NULL);
+    itable.inode[i] = malloc(sizeof(struct inode));
+    pthread_mutex_init(&itable.inode[i]->lock, NULL);
   }
 }
 
@@ -46,8 +49,9 @@ static void itable_grow() {
 struct inode* iget(uint inum) {
   struct inode* empty_victim = 0;
   pthread_spin_lock(&itable.lock);
-  for (struct inode* ip = itable.inode; ip < itable.inode + itable.ninode;
-       ip++) {
+  int n = itable.ninode;
+  for (int i = 0; i < n; i++) {
+    struct inode* ip = itable.inode[i];
     if (ip->inum == inum && ip->ref > 0) {
       ip->ref++;
       pthread_spin_unlock(&itable.lock);
@@ -551,9 +555,11 @@ long inode_read_nbytes_unlocked(struct inode* ip, char* data, size_t bytes,
 }
 
 int stat_inode(struct inode* ip, struct stat* st) {
-  int res      = 0;
-  st->st_nlink = ip->nlink;
-  st->st_size  = ip->size;
+  int res        = 0;
+  st->st_nlink   = ip->nlink;
+  st->st_size    = ip->size;
+  st->st_ino     = ip->inum;
+  st->st_blksize = BSIZE;
   switch (ip->type) {
     case T_DIR_INODE_MYFUSE:
       st->st_mode = S_IFDIR | 0755;
