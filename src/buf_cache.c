@@ -87,11 +87,12 @@ static struct bcache_buf* bget(uint blockno) {
     }
   }
 
-  pthread_spin_unlock(&bucket->lock);
-
   int hidx;
   while (1) {
     for (hidx = 0; hidx < BCACHE_HASH_SIZE; hidx++) {
+      if (hidx == hashid) {
+        continue;
+      }
       uint64_t least_recent_time_stamp = 0;
       least_recent_time_stamp--;
 
@@ -128,7 +129,6 @@ static struct bcache_buf* bget(uint blockno) {
   pthread_spin_unlock(&bcache.hash[hidx].lock);
 
   // link
-  pthread_spin_lock(&bucket->lock);
   b->next                 = bucket->head.next;
   b->prev                 = &bucket->head;
   bucket->head.next->prev = b;
