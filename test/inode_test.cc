@@ -234,9 +234,9 @@ TEST(inode, unaligned_random_read_write_test) {
     c = rand();
   }
 
-  start_worker(unaligned_random_write_worker, 1, big_file_size);
+  start_worker(unaligned_random_write_worker, MAX_WORKER, big_file_size);
 
-  start_worker(unaligned_random_read_worker, 1, big_file_size);
+  start_worker(unaligned_random_read_worker, MAX_WORKER, big_file_size);
 
   begin_op();
   iput(single_inode);
@@ -254,9 +254,9 @@ TEST(inode, big_unaligned_random_read_write_test) {
     c = rand();
   }
 
-  start_worker(unaligned_random_write_worker, 1, big_file_size);
+  start_worker(unaligned_random_write_worker, MAX_WORKER, big_file_size);
 
-  start_worker(unaligned_random_read_worker, 1, big_file_size);
+  start_worker(unaligned_random_read_worker, MAX_WORKER, big_file_size);
 
   begin_op();
   iput(single_inode);
@@ -275,9 +275,9 @@ TEST(inode, parallel_big_unaligned_random_read_write_test) {
     c = rand();
   }
 
-  start_worker(unaligned_random_write_worker, 10, big_file_size);
+  start_worker(unaligned_random_write_worker, MAX_WORKER, big_file_size);
 
-  start_worker(unaligned_random_read_worker, 10, big_file_size);
+  start_worker(unaligned_random_read_worker, MAX_WORKER, big_file_size);
 
   begin_op();
   iput(single_inode);
@@ -350,7 +350,7 @@ TEST(inode, mutil_file_read_write_test) {
     files.push_back(File::GenRandomFile());
   }
   for (int i = 0; i < total_files / 2; i++) {
-    files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 4, MAXOPBLOCKS));
+    files.push_back(File::GenRandomFile(MAXOPBLOCKS * BSIZE * 2, MAXOPBLOCKS));
   }
 
   start_worker(file_write_worker, MAX_WORKER, files.size());

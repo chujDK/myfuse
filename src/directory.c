@@ -24,6 +24,7 @@ struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
 
   // pthread_mutex_trylock: return 0 if not locked
   if (!pthread_mutex_trylock(&dp->lock)) {
+    free(buf);
     err_exit("dirlookup: dp is not locked");
   }
 #endif

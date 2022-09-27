@@ -141,6 +141,7 @@ int filewrite(struct file *f, const char *src, size_t n) {
 
 int myfuse_getattr(const char *path, struct stat *stbuf,
                    struct fuse_file_info *fi) {
+  (void)fi;
   begin_op();
   struct inode *ip = path2inode(path);
   int res          = 0;
@@ -173,6 +174,8 @@ int myfuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return -ENOENT;
   }
 
+  DEBUG_TEST(if (dp->ref < 1) { err_exit("myfuse_readdir: ref < 1"); });
+
   ilock(dp);
 
   struct dirent *de;
@@ -182,14 +185,14 @@ int myfuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
   DEBUG_TEST(if (dp->type != T_DIR_INODE_MYFUSE) {
     free(dirbuf);
-    iunlockput(dp);
+    iunlock(dp);
     end_op();
-    err_exit("dirlookup: file is not a dir");
+    return -EBADF;
   });
 
   if (inode_read_nbytes_locked(dp, dirbuf, dp->size, 0) != dp->size) {
     free(dirbuf);
-    iunlockput(dp);
+    iunlock(dp);
     end_op();
     err_exit("dirlookup: failed to read dir");
   }
@@ -208,11 +211,13 @@ int myfuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
       stat_res = stat_inode(dp, &st);
     }
     if (stat_res == 0) {
-      filler(buf, file_name, &st, 0, 0);
+      if (filler(buf, file_name, &st, 0, 0) != 0) {
+        break;
+      }
     }
   }
 
-  iunlockput(dp);
+  iunlock(dp);
   free(dirbuf);
   end_op();
 
@@ -232,11 +237,12 @@ int myfuse_opendir(const char *path, struct fuse_file_info *fi) {
     end_op();
     return -ENOTDIR;
   }
-  iunlock(dir_inode);
   struct file *file = filealloc();
   file->type        = FD_INODE;
   file->ip          = dir_inode;
-  fi->fh            = (long)file;
+  fi->fh            = (size_t)file;
+  DEBUG_TEST(if (file->ip->ref < 1) { err_exit("myfuse_opendir: ref < 1"); });
+  iunlock(dir_inode);
   end_op();
   return 0;
 }
@@ -253,6 +259,7 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
       struct inode *dir_inode = path2parentinode(path, filename);
       file_inode              = ialloc(T_FILE_INODE_MYFUSE);
       file_inode->nlink++;
+      iupdate(dir_inode);
       ilock(dir_inode);
       dirlink(dir_inode, filename, file_inode->inum);
       iunlockput(dir_inode);
@@ -263,8 +270,6 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
     iunlockput(file_inode);
     return -EISDIR;
   }
-  iunlock(file_inode);
-  end_op();
   struct file *file = filealloc();
   file->type        = FD_INODE;
   file->ip          = file_inode;
@@ -279,10 +284,14 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
     file->writable = 1;
   } else {
     // FIXME: use errcode instead of err_exit
+    iunlockput(file_inode);
+    end_op();
     err_exit("myfuse_open: unknown flag");
   }
 
-  fi->fh = (long)file;
+  fi->fh = (size_t)file;
+  iunlock(file_inode);
+  end_op();
   return 0;
 }
 
@@ -294,8 +303,8 @@ static void release_internal(struct fuse_file_info *fi) {
   if (file == NULL) {
     return;
   }
-  fileclose(file);
   fi->fh = 0;
+  fileclose(file);
 }
 
 int myfuse_release(const char *path, struct fuse_file_info *fi) {
@@ -368,6 +377,7 @@ int myfuse_unlink(const char *path) {
     inode_write_nbytes_locked(dp, (char *)&zero_de, sizeof(zero_de), poff);
   }
   ip->nlink--;
+  iupdate(ip);
   iunlockput(ip);
   iunlockput(dp);
 

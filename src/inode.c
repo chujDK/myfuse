@@ -20,7 +20,7 @@ int inode_init(struct superblock* sb) {
   itable.ninode = NINODE_INIT;
   itable.inode  = malloc(sizeof(struct inode*) * NINODE_INIT);
   for (int i = 0; i < NINODE_INIT; i++) {
-    itable.inode[i] = malloc(sizeof(struct inode));
+    itable.inode[i] = calloc(1, sizeof(struct inode));
     pthread_mutex_init(&itable.inode[i]->lock, NULL);
   }
 
@@ -32,8 +32,9 @@ int inode_init(struct superblock* sb) {
 }
 
 static void itable_grow() {
+  myfuse_log("itable_grow: %d -> %d", itable.ninode, itable.ninode * 2);
   if (!pthread_spin_trylock(&itable.lock)) {
-    err_exit("itable_grow called no within itable locked");
+    err_exit("itable_grow called not within itable locked");
   }
   itable.inode =
       realloc(itable.inode, sizeof(struct inode*) * itable.ninode * 2);
@@ -133,6 +134,11 @@ void ilock(struct inode* ip) {
     ip->valid = 1;
     if (ip->type == T_UNUSE_INODE_MYFUSE) {
       err_exit("ilock: ip is unused");
+    }
+
+    if (ip->type != T_FILE_INODE_MYFUSE && ip->type != T_DIR_INODE_MYFUSE &&
+        ip->type != T_DEVICE_INODE_MYFUSE) {
+      err_exit("ilock: ip has invalid type");
     }
   }
 }
