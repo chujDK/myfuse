@@ -137,6 +137,7 @@ struct File {
 std::vector<File*> files;
 std::map<File*, uint> file_to_inum;
 std::map<uint, File*> inum_to_file;
+std::set<uint> inum_got;
 pthread_mutex_t mapping_lock;
 
 void* file_write_worker(void* _range) {
@@ -147,19 +148,25 @@ void* file_write_worker(void* _range) {
     begin_op();
     auto inode = ialloc(T_FILE_INODE_MYFUSE);
     pthread_mutex_lock(&mapping_lock);
+    if (inum_got.find(inode->inum) != inum_got.end()) {
+      myfuse_log("inode %d realloced", inode->inum);
+    }
+    inum_got.insert(inode->inum);
     file_to_inum[file] = inode->inum;
     EXPECT_EQ(inum_to_file[inode->inum], nullptr);
     inum_to_file[inode->inum] = file;
     pthread_mutex_unlock(&mapping_lock);
-    // manully link
     ilock(inode);
+    EXPECT_EQ(inode->ref, 1);
+    // manully link
     inode->nlink++;
     iupdate(inode);
     iunlock(inode);
     end_op();
     for (auto piece : file->pieces) {
-      inode_write_nbytes_unlocked(inode, piece->content.c_str(), piece->size,
-                                  piece->start);
+      EXPECT_EQ(inode_write_nbytes_unlocked(inode, piece->content.c_str(),
+                                            piece->size, piece->start),
+                piece->size);
     }
     begin_op();
     EXPECT_EQ(inode->size, file->file_tatol_size);
@@ -364,7 +371,7 @@ TEST(inode, mutil_file_read_write_test) {
 
   start_worker(file_write_worker, MAX_WORKER, files.size());
 
-  start_worker(file_read_worker, MAX_WORKER, files.size());
+  // start_worker(file_read_worker, MAX_WORKER, files.size());
 }
 
 int main(int argc, char* argv[]) {

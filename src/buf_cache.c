@@ -12,8 +12,9 @@ struct bcache_hashtbl {
 };
 
 struct bcache {
-  pthread_spinlock_t lock;
   struct bcache_buf buf[NCACHE_BUF];
+
+  pthread_mutex_t lock;
 
   struct bcache_hashtbl hash[BCACHE_HASH_SIZE];
 };
@@ -22,10 +23,9 @@ static struct bcache bcache;
 
 void bcache_init() {
   struct bcache_buf* b;
-  pthread_spin_init(&bcache.lock, 1);
 
   for (int i = 0; i < BCACHE_HASH_SIZE; i++) {
-    pthread_spin_init(&bcache.hash[i].lock, 1);
+    pthread_spin_init(&bcache.hash[i].lock, PTHREAD_PROCESS_SHARED);
     bcache.hash[i].head.prev = &bcache.hash[i].head;
     bcache.hash[i].head.next = &bcache.hash[i].head;
   }
@@ -51,10 +51,7 @@ static struct bcache_buf* bget(uint blockno) {
 
   for (b = bucket->head.next; b != &bucket->head; b = b->next) {
 #ifdef DEBUG
-    uint hash = bcache_hash(b->blockno);
-    if (hash != hashid) {
-      assert(bcache_hash(b->blockno) == hashid);
-    }
+    assert(bcache_hash(b->blockno) == hashid);
 #endif
     if (b->blockno == blockno) {
       b->refcnt++;
@@ -63,30 +60,62 @@ static struct bcache_buf* bget(uint blockno) {
       return b;
     }
   }
-  pthread_spin_unlock(&bucket->lock);
-
-  pthread_spin_lock(&bcache.lock);
 
   // Not cached.
-  // Recycle all hashtbl and get the least recent buf
-  uint64_t least_recent_time_stamp = 0;
-  least_recent_time_stamp--;
+  // Recycle per hashtbl and get the least recent buf
+
   struct bcache_buf* least_recent_buf = 0;
-  for (int hidx = 0; hidx < BCACHE_HASH_SIZE; hidx++) {
-    pthread_spin_lock(&bcache.hash[hidx].lock);
-    for (b = bcache.hash[hidx].head.prev; b != &bcache.hash[hidx].head;
-         b = b->prev) {
-      if (b->refcnt == 0) {
-        if (b->timestamp <= least_recent_time_stamp) {
-          least_recent_buf        = b;
-          least_recent_time_stamp = b->timestamp;
-        }
+  for (b = bcache.hash[hashid].head.prev; b != &bcache.hash[hashid].head;
+       b = b->prev) {
+    uint64_t least_recent_time_stamp = 0;
+    least_recent_time_stamp--;
+    if (b->refcnt == 0) {
+      if (b->timestamp <= least_recent_time_stamp) {
+        least_recent_buf        = b;
+        least_recent_time_stamp = b->timestamp;
       }
+    }
+
+    if (least_recent_buf) {
+      b          = least_recent_buf;
+      b->blockno = blockno;
+      b->refcnt  = 1;
+      b->valid   = 0;
+      pthread_spin_unlock(&bucket->lock);
+      pthread_mutex_lock(&b->lock);
+      return b;
     }
   }
 
-  if (least_recent_buf == 0) {
-    err_exit("bget: no buffers");
+  pthread_spin_unlock(&bucket->lock);
+
+  int hidx;
+  while (1) {
+    for (hidx = 0; hidx < BCACHE_HASH_SIZE; hidx++) {
+      uint64_t least_recent_time_stamp = 0;
+      least_recent_time_stamp--;
+
+      pthread_spin_lock(&bcache.hash[hidx].lock);
+      for (b = bcache.hash[hidx].head.prev; b != &bcache.hash[hidx].head;
+           b = b->prev) {
+        if (b->refcnt == 0) {
+          if (b->timestamp <= least_recent_time_stamp) {
+            least_recent_buf        = b;
+            least_recent_time_stamp = b->timestamp;
+          }
+        }
+      }
+      if (least_recent_buf) {
+        break;
+      }
+      pthread_spin_unlock(&bcache.hash[hidx].lock);
+    }
+
+    if (least_recent_buf == 0) {
+      myfuse_log("bget: no buffers, find again..");
+    } else {
+      break;
+    }
   }
 
   b          = least_recent_buf;
@@ -96,17 +125,16 @@ static struct bcache_buf* bget(uint blockno) {
   // unlink
   b->next->prev = b->prev;
   b->prev->next = b->next;
+  pthread_spin_unlock(&bcache.hash[hidx].lock);
 
   // link
+  pthread_spin_lock(&bucket->lock);
   b->next                 = bucket->head.next;
   b->prev                 = &bucket->head;
   bucket->head.next->prev = b;
   bucket->head.next       = b;
-  for (int hidx = 0; hidx < BCACHE_HASH_SIZE; hidx++) {
-    pthread_spin_unlock(&bcache.hash[hidx].lock);
-  }
+  pthread_spin_unlock(&bucket->lock);
 
-  pthread_spin_unlock(&bcache.lock);
   pthread_mutex_lock(&b->lock);
 
   return b;
@@ -160,13 +188,17 @@ void brelse(struct bcache_buf* b) {
 }
 
 void bpin(struct bcache_buf* b) {
-  pthread_spin_lock(&bcache.lock);
+  int hashid                    = bcache_hash(b->blockno);
+  struct bcache_hashtbl* bucket = &bcache.hash[hashid];
+  pthread_spin_lock(&bucket->lock);
   b->refcnt++;
-  pthread_spin_unlock(&bcache.lock);
+  pthread_spin_unlock(&bucket->lock);
 }
 
 void bunpin(struct bcache_buf* b) {
-  pthread_spin_lock(&bcache.lock);
+  int hashid                    = bcache_hash(b->blockno);
+  struct bcache_hashtbl* bucket = &bcache.hash[hashid];
+  pthread_spin_lock(&bucket->lock);
   b->refcnt--;
-  pthread_spin_unlock(&bcache.lock);
+  pthread_spin_unlock(&bucket->lock);
 }

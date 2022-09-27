@@ -4,7 +4,6 @@
 
 struct bcache_buf {
   int valid;  // has data read from disk?
-  int disk;   // does disk own buf?
   uint blockno;
   pthread_mutex_t lock;
   uint refcnt;

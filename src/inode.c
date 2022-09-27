@@ -12,10 +12,10 @@ struct {
   struct inode** inode;
 } itable;
 
-pthread_mutex_t block_alloc_lock;
+pthread_mutex_t ialloc_lock;
 
 int inode_init(struct superblock* sb) {
-  pthread_spin_init(&itable.lock, 1);
+  pthread_spin_init(&itable.lock, PTHREAD_PROCESS_SHARED);
 #define NINODE_INIT 30
   itable.ninode = NINODE_INIT;
   itable.inode  = malloc(sizeof(struct inode*) * NINODE_INIT);
@@ -24,7 +24,7 @@ int inode_init(struct superblock* sb) {
     pthread_mutex_init(&itable.inode[i]->lock, NULL);
   }
 
-  pthread_mutex_init(&block_alloc_lock, NULL);
+  pthread_mutex_init(&ialloc_lock, NULL);
 
   memset(&bmap_cache, 0, sizeof(bmap_cache));
   block_allocator_refresh(sb);
@@ -434,7 +434,6 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
 
   if (off + nbytes > MAXFILE_SIZE) {
     nbytes -= (off + nbytes - MAXFILE_SIZE);
-    myfuse_log("inode_write_nbytes_locked: nbytes to %u", nbytes);
   }
 
   long n_write = nbytes;
@@ -442,9 +441,6 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
   // update size
   ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
   iupdate(ip);
-
-  myfuse_log("inode_write_nbytes_locked: %d size %u", ip->inum, ip->size);
-  myfuse_log("inode_write_nbytes_locked: off %u nbytes %u", off, nbytes);
 
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
@@ -500,7 +496,6 @@ long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
 
   if (off + nbytes > ip->size) {
     nbytes -= (off + nbytes - ip->size);
-    myfuse_log("inode_read_nbytes_locked %d size %u", ip->inum, ip->size);
   }
   size_t n_read = nbytes;
 
