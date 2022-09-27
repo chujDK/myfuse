@@ -434,12 +434,17 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
 
   if (off + nbytes > MAXFILE_SIZE) {
     nbytes -= (off + nbytes - MAXFILE_SIZE);
+    myfuse_log("inode_write_nbytes_locked: nbytes to %u", nbytes);
   }
 
   long n_write = nbytes;
 
   // update size
   ip->size = ip->size < off + nbytes ? off + nbytes : ip->size;
+  iupdate(ip);
+
+  myfuse_log("inode_write_nbytes_locked: %d size %u", ip->inum, ip->size);
+  myfuse_log("inode_write_nbytes_locked: off %u nbytes %u", off, nbytes);
 
   uint inode_block_start = ((size_t)(off / BSIZE));
   size_t from_start      = off % BSIZE;
@@ -495,6 +500,7 @@ long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
 
   if (off + nbytes > ip->size) {
     nbytes -= (off + nbytes - ip->size);
+    myfuse_log("inode_read_nbytes_locked %d size %u", ip->inum, ip->size);
   }
   size_t n_read = nbytes;
 

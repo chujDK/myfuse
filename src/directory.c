@@ -40,6 +40,9 @@ struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
       continue;
     }
     if (dirnamecmp(de->name, name) == 0) {
+      if (poff) {
+        *poff = off;
+      }
       return iget(de->inum);
     }
   }

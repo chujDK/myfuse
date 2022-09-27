@@ -23,6 +23,8 @@ int myfuse_releasedir(const char* path, struct fuse_file_info* fi);
 
 int myfuse_read(const char*, char*, size_t, off_t, struct fuse_file_info*);
 
+int myfuse_rmdir(const char* path);
+
 void file_init();
 
 enum FD_TYPE {

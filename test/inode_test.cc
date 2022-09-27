@@ -137,6 +137,7 @@ struct File {
 std::vector<File*> files;
 std::map<File*, uint> file_to_inum;
 std::map<uint, File*> inum_to_file;
+pthread_mutex_t mapping_lock;
 
 void* file_write_worker(void* _range) {
   auto range = (struct start_to_end*)_range;
@@ -144,12 +145,15 @@ void* file_write_worker(void* _range) {
   for (uint i = range->start; i < range->end; i++) {
     auto file = files[i];
     begin_op();
-    auto inode                = ialloc(T_FILE_INODE_MYFUSE);
-    file_to_inum[file]        = inode->inum;
+    auto inode = ialloc(T_FILE_INODE_MYFUSE);
+    pthread_mutex_lock(&mapping_lock);
+    file_to_inum[file] = inode->inum;
+    EXPECT_EQ(inum_to_file[inode->inum], nullptr);
     inum_to_file[inode->inum] = file;
+    pthread_mutex_unlock(&mapping_lock);
     // manully link
     ilock(inode);
-    inode->nlink = 1;
+    inode->nlink++;
     iupdate(inode);
     iunlock(inode);
     end_op();
@@ -158,6 +162,7 @@ void* file_write_worker(void* _range) {
                                   piece->start);
     }
     begin_op();
+    EXPECT_EQ(inode->size, file->file_tatol_size);
     iput(inode);
     end_op();
   }
@@ -170,8 +175,11 @@ void* file_read_worker(void* _range) {
   std::array<char, MAXOPBLOCKS * BSIZE * 4> read_buf;
 
   for (uint i = range->start; i < range->end; i++) {
-    auto file          = files[i];
-    auto inum          = file_to_inum[file];
+    pthread_mutex_lock(&mapping_lock);
+    auto file = files[i];
+    auto inum = file_to_inum[file];
+    EXPECT_EQ(inum_to_file[inum], file);
+    pthread_mutex_unlock(&mapping_lock);
     auto inode_by_iget = iget(inum);
     EXPECT_EQ(inum, inode_by_iget->inum);
     for (auto piece : file->pieces) {
@@ -198,6 +206,7 @@ void* file_read_worker(void* _range) {
     // manually unlink
     begin_op();
     ilock(inode_by_iget);
+    EXPECT_EQ(inode_by_iget->nlink, 1);
     inode_by_iget->nlink--;
     iupdate(inode_by_iget);
     iunlockput(inode_by_iget);
@@ -365,5 +374,6 @@ int main(int argc, char* argv[]) {
   if (env == nullptr) {
     err_exit("failed to init testing env!");
   }
+  pthread_mutex_init(&mapping_lock, nullptr);
   return RUN_ALL_TESTS();
 }

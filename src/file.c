@@ -373,14 +373,73 @@ int myfuse_unlink(const char *path) {
     return -ENONET;
   }
 
-  if (dirlookup(dp, name, &poff) != NULL) {
-    inode_write_nbytes_locked(dp, (char *)&zero_de, sizeof(zero_de), poff);
-  }
   ip->nlink--;
+  if (ip->nlink == 0) {
+    if (dirlookup(dp, name, &poff) != NULL) {
+      inode_write_nbytes_locked(dp, (char *)&zero_de, sizeof(zero_de), poff);
+    }
+  }
   iupdate(ip);
   iunlockput(ip);
   iunlockput(dp);
 
+  end_op();
+
+  return res;
+}
+
+int myfuse_rmdir(const char *path) {
+  int res = 0;
+  char name[DIRSIZE];
+  struct dirent zero_de;
+  uint poff;
+
+  memset(&zero_de, 0, sizeof(zero_de));
+
+  begin_op();
+  struct inode *ip = path2inode(path);
+  struct inode *dp = path2parentinode(path, name);
+
+  if (ip == NULL) {
+    myfuse_log("`%s' is not exist", path);
+    end_op();
+    return -ENOENT;
+  }
+
+  if (ip->size != 0) {
+    char *buf = malloc(ip->size);
+    ilock(ip);
+    if (inode_read_nbytes_locked(ip, buf, ip->size, 0) != ip->size) {
+      iunlock(ip);
+      end_op();
+      err_exit("myfuse_rmdir: inode_read_nbytes_unlocked failed to read");
+    }
+
+    for (int i = 0; i < ip->size; i += sizeof(struct dirent)) {
+      struct dirent *de = (struct dirent *)(buf + i);
+      if (de->inum != 0) {
+        myfuse_log("myfuse_rmdir: `%s' is not empty", path);
+        free(buf);
+        iunlock(ip);
+        end_op();
+        return -ENOTEMPTY;
+      }
+    }
+    iunlock(ip);
+  }
+
+  ilock(dp);
+  ilock(ip);
+  ip->nlink--;
+  if (ip->nlink == 0) {
+    if (dirlookup(dp, name, &poff) != NULL) {
+      inode_write_nbytes_locked(dp, (char *)&zero_de, sizeof(zero_de), poff);
+    }
+  }
+  iupdate(ip);
+
+  iunlockput(ip);
+  iunlockput(dp);
   end_op();
 
   return res;

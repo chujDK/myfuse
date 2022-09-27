@@ -55,6 +55,7 @@ static const struct fuse_operations myfuse_oper = {
     .releasedir = myfuse_releasedir,
     .mkdir      = myfuse_mkdir,
     .unlink     = myfuse_unlink,
+    .rmdir      = myfuse_rmdir,
 };
 
 #ifdef VERBOSE
