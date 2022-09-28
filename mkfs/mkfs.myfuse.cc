@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
   assert(BSIZE % sizeof(struct dinode) == 0);
   assert(BSIZE % sizeof(struct dirent) == 0);
 
-  myfuse_debug_log(
+  myfuse_log(
       "This program will format the disk %s\n"
       "Continue? yes/no >>",
       disk_name.c_str());
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   auto blockdev_reslut = popen(blockdev_command.c_str(), "r");
   uint sector_size;
   fscanf(blockdev_reslut, "%u", &sector_size);
-  myfuse_debug_log("sector size: %d", sector_size);
+  myfuse_log("sector size: %d", sector_size);
   pclose(blockdev_reslut);
 
   uint block_size = sector_size / sector_per_block;
