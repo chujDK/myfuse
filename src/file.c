@@ -379,8 +379,11 @@ int myfuse_unlink(const char *path) {
 
   ip->nlink--;
   if (ip->nlink == 0) {
-    if (dirlookup(dp, name, &poff) != NULL) {
+    struct inode *found_ip = NULL;
+    if ((found_ip = dirlookup(dp, name, &poff)) != NULL) {
       inode_write_nbytes_locked(dp, (char *)&zero_de, sizeof(zero_de), poff);
+      DEBUG_TEST(assert(found_ip->inum == ip->inum););
+      iput(found_ip);
     }
   }
   iupdate(ip);
