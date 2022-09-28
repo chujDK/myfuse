@@ -12,8 +12,8 @@ I intend to implement a XV6-like file system on fuse that can work in a real Lin
 
 ```
 mkdir build && cd ./build
-cmake ..
-ninja
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
 ```
 
 ### format a disk(or any file/block device)
