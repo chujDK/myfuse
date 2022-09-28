@@ -166,7 +166,7 @@ static struct inode* namex(const char* path, int nameiparent, char* name) {
   if (*path == '/')
     ip = iget(ROOTINO);
   else
-    ip = idup(MYFUSE_STATE->cwd);
+    err_exit("cwd not implemented");
 
   while ((path = skipelem(path, name)) != 0) {
     ilock(ip);

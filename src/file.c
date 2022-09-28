@@ -257,7 +257,11 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
       // create the file
       char filename[DIRSIZE];
       struct inode *dir_inode = path2parentinode(path, filename);
-      file_inode              = ialloc(T_FILE_INODE_MYFUSE);
+      if (dir_inode == NULL) {
+        end_op();
+        return -ENOENT;
+      }
+      file_inode = ialloc(T_FILE_INODE_MYFUSE);
       file_inode->nlink++;
       iupdate(dir_inode);
       ilock(dir_inode);
@@ -283,10 +287,8 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
     file->readable = 1;
     file->writable = 1;
   } else {
-    // FIXME: use errcode instead of err_exit
-    iunlockput(file_inode);
-    end_op();
-    err_exit("myfuse_open: unknown flag");
+    file->readable = 1;
+    file->writable = 1;
   }
 
   fi->fh = (size_t)file;
@@ -490,6 +492,73 @@ int myfuse_access(const char *path, int mask) {
     return -ENOENT;
   }
   iput(ip);
+  end_op();
+
+  return 0;
+}
+
+int myfuse_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+  if (!(mode & S_IFREG)) {
+    // must be a regular file
+    // shouldn't reach
+    err_exit("must be regular file");
+  }
+
+  begin_op();
+  // create the file
+  char filename[DIRSIZE];
+  struct inode *dir_inode = path2parentinode(path, filename);
+  if (dir_inode == NULL) {
+    end_op();
+    return -ENOENT;
+  }
+  struct inode *file_inode = ialloc(T_FILE_INODE_MYFUSE);
+  ilock(file_inode);
+  file_inode->nlink++;
+  file_inode->perm = mode & 0777;
+  iupdate(dir_inode);
+  ilock(dir_inode);
+  dirlink(dir_inode, filename, file_inode->inum);
+  iunlockput(dir_inode);
+
+  // open the file
+  struct file *file = filealloc();
+  file->type        = FD_INODE;
+  file->ip          = file_inode;
+  if (mode & O_RDONLY) {
+    file->readable = 1;
+    file->writable = 0;
+  } else if (mode & O_WRONLY) {
+    file->readable = 0;
+    file->writable = 1;
+  } else if (mode & O_RDWR) {
+    file->readable = 1;
+    file->writable = 1;
+  } else {
+    file->readable = 1;
+    file->writable = 1;
+  }
+
+  fi->fh = (size_t)file;
+  iunlock(file_inode);
+  end_op();
+
+  return 0;
+}
+
+int myfuse_chmod(const char *path, mode_t mode, struct fuse_file_info *fi) {
+  (void)fi;
+  begin_op();
+  struct inode *ip = path2inode(path);
+  if (ip == NULL) {
+    return -ENOENT;
+  }
+
+  ilock(ip);
+  ip->perm = mode & 0777;
+  iupdate(ip);
+  iunlockput(ip);
+
   end_op();
 
   return 0;

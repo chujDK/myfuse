@@ -33,6 +33,10 @@ int myfuse_truncate(const char* path, off_t size, struct fuse_file_info* fi);
 
 int myfuse_access(const char* path, int mask);
 
+int myfuse_create(const char* path, mode_t mode, struct fuse_file_info* fi);
+
+int myfuse_chmod(const char* path, mode_t mode, struct fuse_file_info* fi);
+
 void file_init();
 
 enum FD_TYPE {

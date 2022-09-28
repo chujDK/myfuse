@@ -129,6 +129,7 @@ void ilock(struct inode* ip) {
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size  = dip->size;
+    ip->perm  = dip->perm;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     logged_relse(bp);
     ip->valid = 1;
@@ -167,6 +168,7 @@ void iupdate(struct inode* ip) {
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size  = ip->size;
+  dip->perm  = ip->perm;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   logged_write(bp);
   logged_relse(bp);
@@ -737,10 +739,10 @@ int stat_inode(struct inode* ip, struct stat* st) {
   st->st_blksize = BSIZE;
   switch (ip->type) {
     case T_DIR_INODE_MYFUSE:
-      st->st_mode = S_IFDIR | 0755;
+      st->st_mode = S_IFDIR | ip->perm;
       break;
     case T_FILE_INODE_MYFUSE:
-      st->st_mode = S_IFREG | 0644;
+      st->st_mode = S_IFREG | ip->perm;
       break;
     case T_DEVICE_INODE_MYFUSE:
       myfuse_log("`inum %d' is device, not supported", ip->inum);

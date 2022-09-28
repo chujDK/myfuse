@@ -49,6 +49,7 @@ static const struct fuse_operations myfuse_oper = {
     .init       = myfuse_init,
     .getattr    = myfuse_getattr,
     .access     = myfuse_access,
+    .create     = myfuse_create,
     .opendir    = myfuse_opendir,
     .readdir    = myfuse_readdir,
     .mkdir      = myfuse_mkdir,
@@ -60,6 +61,7 @@ static const struct fuse_operations myfuse_oper = {
     .write      = myfuse_write,
     .release    = myfuse_release,
     .releasedir = myfuse_releasedir,
+    .chmod      = myfuse_chmod,
 };
 
 #ifdef VERBOSE

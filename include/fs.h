@@ -26,7 +26,7 @@ struct superblock {
 };
 #define SUPERBLOCK_ID 1
 
-#define NDIRECT 10
+#define NDIRECT 23
 #define NINDIRECT1 (BSIZE / sizeof(uint))
 #define NINDIRECT2 ((BSIZE / sizeof(uint)) * (BSIZE / sizeof(uint)))
 #define NINDIRECT3 \
@@ -45,7 +45,8 @@ struct dinode {
   short major;             // Major device number (T_DEVICE_INODE_MYFUSE only)
   short minor;             // Minor device number (T_DEVICE_INODE_MYFUSE only)
   short nlink;             // Number of links to inode in file system
-  uint size;               // Size of file (bytes)
+  size_t size;             // Size of file (bytes)
+  uint perm;               // permission
   uint addrs[NBLOCKADDR];  // Data block addresses  short type;
 };
 
