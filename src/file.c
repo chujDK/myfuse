@@ -444,3 +444,19 @@ int myfuse_rmdir(const char *path) {
 
   return res;
 }
+
+int myfuse_read(const char *path, char *buf, size_t size, off_t offset,
+                struct fuse_file_info *fi) {
+  struct file *file = (struct file *)fi->fh;
+  DEBUG_TEST(assert(file != NULL););
+  int nbytes = inode_read_nbytes_unlocked(file->ip, buf, size, offset);
+  return nbytes;
+}
+
+int myfuse_write(const char *path, const char *buf, size_t size, off_t offset,
+                 struct fuse_file_info *fi) {
+  struct file *file = (struct file *)fi->fh;
+  DEBUG_TEST(assert(file != NULL););
+  int nbytes = inode_write_nbytes_unlocked(file->ip, buf, size, offset);
+  return nbytes;
+}

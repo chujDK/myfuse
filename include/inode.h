@@ -100,6 +100,8 @@ void iunlock(struct inode* ip);
 
 void itrunc(struct inode* ip);
 
+int itrunc2size(struct inode* ip, size_t size);
+
 void iupdate(struct inode* ip);
 
 struct inode* idup(struct inode* ip);

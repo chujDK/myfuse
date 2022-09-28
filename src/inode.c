@@ -222,6 +222,7 @@ static inline void assert_no_need_to_restart_op_in_imap2blockno() {
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
+
 uint imap2blockno(struct inode* ip, uint bn) {
   assert_no_need_to_restart_op_in_imap2blockno();
 
@@ -411,6 +412,176 @@ void itrunc(struct inode* ip) {
   ip->size = 0;
   iupdate(ip);
 }
+
+void itrunc2size_log_op_restart_helper() {
+  if (n_log_wrote >= MAXOPBLOCKS - 1 - 3) {
+    end_op();
+    begin_op();
+  }
+}
+
+#define block_free_safe(x)             \
+  itrunc2size_log_op_restart_helper(); \
+  block_free((x));                     \
+  (x) = 0;
+
+void imap2blockno_free(struct inode* ip, uint bn) {
+  assert_no_need_to_restart_op_in_imap2blockno();
+
+  uint addr, *a;
+  struct bcache_buf* bp;
+
+  if (bn < NDIRECT) {
+    if ((addr = ip->addrs[bn]) != 0) {
+      block_free_safe(ip->addrs[bn]);
+    }
+    return;
+  }
+  bn -= NDIRECT;
+
+  // 1st indirect block
+  // [d d .. d i i i]
+  //           |
+  //           +---> [d d .. d]
+  if (bn < NINDIRECT1) {
+    // Load indirect block, allocating if necessary.
+    if ((addr = ip->addrs[NDIRECT]) == 0) {
+      return;
+    }
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    if ((addr = a[bn]) != 0) {
+      block_free_safe(a[bn]);
+      logged_write(bp);
+    }
+    logged_relse(bp);
+    return;
+  }
+  bn -= NINDIRECT1;
+
+  // 2st indirect block
+  // [d d .. d i i i]
+  //             |
+  //             +---> [i i .. i]
+  //                    | |
+  //     [d d .. d] <---+ +---> [d d .. d]
+  if (bn < NINDIRECT2) {
+    uint entry  = bn / NINDIRECT1;
+    uint offset = bn % NINDIRECT1;
+    // Load indirect entry, allocating if necessary
+    if ((addr = ip->addrs[NDIRECT + 1]) == 0) {
+      ip->addrs[NDIRECT + 1] = addr = block_alloc();
+    }
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    assert(entry * sizeof(uint) < BSIZE);
+    if ((addr = a[entry]) == 0) {
+      logged_relse(bp);
+      return;
+    }
+    logged_relse(bp);
+
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    if ((addr = a[offset]) != 0) {
+      block_free_safe(a[offset]);
+      logged_write(bp);
+    }
+    logged_relse(bp);
+    return;
+  }
+  bn -= NINDIRECT2;
+
+  // 3st indirect block
+  // [d d .. d i i i]
+  //             |
+  //             +---> [i i .. i]
+  //                    | |
+  //     [i i .. i] <---+ +---> [i i .. i]
+  //      |
+  //      +---> [d d .. d]
+  if (bn < NINDIRECT3) {
+    uint entryl1  = bn / NINDIRECT2;
+    uint offsetl1 = bn % NINDIRECT2;
+    uint entryl2  = offsetl1 / NINDIRECT1;
+    uint offsetl2 = offsetl1 % NINDIRECT1;
+    // Load indirect entry, allocating if necessary
+    if ((addr = ip->addrs[NDIRECT + 2]) == 0) {
+      // exit
+      return;
+    }
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    assert(entryl1 * sizeof(uint) < BSIZE);
+    if ((addr = a[entryl1]) == 0) {
+      logged_relse(bp);
+      return;
+    }
+    logged_relse(bp);
+
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    assert(entryl2 * sizeof(uint) < BSIZE);
+    if ((addr = a[entryl2]) == 0) {
+      logged_relse(bp);
+      return;
+    }
+    logged_relse(bp);
+
+    bp = logged_read(addr);
+    a  = (uint*)bp->data;
+    if ((addr = a[offsetl2]) != 0) {
+      block_free_safe(a[offsetl2]);
+      logged_write(bp);
+    }
+    logged_relse(bp);
+    return;
+  }
+
+  err_exit("imap2blockno_free: inode too big");
+  return;
+}
+
+// called inside op and lock
+int itrunc2size(struct inode* ip, size_t size) {
+  DEBUG_TEST(if (ip->type != T_FILE_INODE_MYFUSE) {
+    err_exit("itrunc2size called on non-file inode");
+  });
+
+  if (size == ip->size) {
+    goto out;
+  }
+
+  if (size == 0) {
+    itrunc(ip);
+  }
+
+  size_t nbytes_aligned    = 0;
+  nbytes_aligned           = ROUNDUP(size, BSIZE);
+  long long target_blockno = nbytes_aligned / BSIZE;
+  long long origin_blockno = ROUNDUP(ip->size, BSIZE) / BSIZE;
+  myfuse_log("%lx truncate to %lx, %lx", ip->size, size, nbytes_aligned);
+
+  if (target_blockno >= origin_blockno) {
+    for (uint i = origin_blockno; i < target_blockno; i++) {
+      // alloc the node
+      itrunc2size_log_op_restart_helper();
+      (void)imap2blockno(ip, i);
+    }
+  } else {
+    for (uint i = target_blockno; i < origin_blockno; i++) {
+      itrunc2size_log_op_restart_helper();
+      imap2blockno_free(ip, i);
+    }
+  }
+
+out:
+  ip->size = size;
+  iupdate(ip);
+
+  return 0;
+}
+#undef block_free
 
 static size_t min(size_t a, size_t b) { return a < b ? a : b; }
 

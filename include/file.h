@@ -21,7 +21,11 @@ int myfuse_release(const char* path, struct fuse_file_info* fi);
 
 int myfuse_releasedir(const char* path, struct fuse_file_info* fi);
 
-int myfuse_read(const char*, char*, size_t, off_t, struct fuse_file_info*);
+int myfuse_read(const char* path, char* buf, size_t size, off_t offset,
+                struct fuse_file_info* fi);
+
+int myfuse_write(const char* path, const char* buf, size_t size, off_t offset,
+                 struct fuse_file_info* fi);
 
 int myfuse_rmdir(const char* path);
 

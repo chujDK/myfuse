@@ -48,14 +48,16 @@ static void show_help(const char* progname) {
 static const struct fuse_operations myfuse_oper = {
     .init       = myfuse_init,
     .getattr    = myfuse_getattr,
-    .readdir    = myfuse_readdir,
-    .open       = myfuse_open,
     .opendir    = myfuse_opendir,
-    .release    = myfuse_release,
-    .releasedir = myfuse_releasedir,
+    .readdir    = myfuse_readdir,
     .mkdir      = myfuse_mkdir,
     .unlink     = myfuse_unlink,
     .rmdir      = myfuse_rmdir,
+    .open       = myfuse_open,
+    .read       = myfuse_read,
+    .write      = myfuse_write,
+    .release    = myfuse_release,
+    .releasedir = myfuse_releasedir,
 };
 
 #ifdef VERBOSE
