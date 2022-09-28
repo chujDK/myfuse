@@ -48,11 +48,13 @@ static void show_help(const char* progname) {
 static const struct fuse_operations myfuse_oper = {
     .init       = myfuse_init,
     .getattr    = myfuse_getattr,
+    .access     = myfuse_access,
     .opendir    = myfuse_opendir,
     .readdir    = myfuse_readdir,
     .mkdir      = myfuse_mkdir,
     .unlink     = myfuse_unlink,
     .rmdir      = myfuse_rmdir,
+    .truncate   = myfuse_truncate,
     .open       = myfuse_open,
     .read       = myfuse_read,
     .write      = myfuse_write,

@@ -29,6 +29,10 @@ int myfuse_write(const char* path, const char* buf, size_t size, off_t offset,
 
 int myfuse_rmdir(const char* path);
 
+int myfuse_truncate(const char* path, off_t size, struct fuse_file_info* fi);
+
+int myfuse_access(const char* path, int mask);
+
 void file_init();
 
 enum FD_TYPE {

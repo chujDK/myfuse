@@ -10,7 +10,7 @@ struct inode* single_inode;
 
 const int nwriter             = 10;
 const int nblock_reader_check = 1000;
-const uint big_file_block = nwriter * ((uint)((NINDIRECT1 * 20) / nwriter) + 1);
+const uint big_file_block = nwriter * ((uint)((NINDIRECT1 * 40) / nwriter) + 1);
 const uint64_t big_file_size = (uint64_t)big_file_block * BSIZE;
 std::array<char, big_file_size> big_file_content;
 std::array<char, big_file_size> big_file_buf;

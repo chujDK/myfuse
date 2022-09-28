@@ -460,3 +460,37 @@ int myfuse_write(const char *path, const char *buf, size_t size, off_t offset,
   int nbytes = inode_write_nbytes_unlocked(file->ip, buf, size, offset);
   return nbytes;
 }
+
+int myfuse_truncate(const char *path, off_t size, struct fuse_file_info *fi) {
+  (void)fi;
+  begin_op();
+  struct inode *ip = path2inode(path);
+
+  if (ip == NULL) {
+    end_op();
+    return -ENOENT;
+  }
+  if (ip->type == T_DIR_INODE_MYFUSE) {
+    end_op();
+    return -EISDIR;
+  }
+
+  ilock(ip);
+  itrunc2size(ip, size);
+  iunlockput(ip);
+  end_op();
+  return 0;
+}
+
+int myfuse_access(const char *path, int mask) {
+  (void)mask;
+  begin_op();
+  struct inode *ip = path2inode(path);
+  if (ip == NULL) {
+    return -ENOENT;
+  }
+  iput(ip);
+  end_op();
+
+  return 0;
+}
