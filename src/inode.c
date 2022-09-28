@@ -342,6 +342,7 @@ uint imap2blockno(struct inode* ip, uint bn) {
 }
 
 void itrunc(struct inode* ip) {
+  myfuse_debug_log("itrunc");
   for (int i = 0; i < NDIRECT; i++) {
     if (ip->addrs[i]) {
       block_free(ip->addrs[i]);
