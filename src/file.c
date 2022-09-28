@@ -411,11 +411,12 @@ int myfuse_rmdir(const char *path) {
   }
 
   if (ip->size != 0) {
-    char *buf = malloc(ip->size);
     ilock(ip);
+    char *buf = malloc(ip->size);
     if (inode_read_nbytes_locked(ip, buf, ip->size, 0) != ip->size) {
       iunlock(ip);
       end_op();
+      free(buf);
       err_exit("myfuse_rmdir: inode_read_nbytes_unlocked failed to read");
     }
 
@@ -423,9 +424,9 @@ int myfuse_rmdir(const char *path) {
       struct dirent *de = (struct dirent *)(buf + i);
       if (de->inum != 0) {
         myfuse_debug_log("myfuse_rmdir: `%s' is not empty", path);
-        free(buf);
         iunlock(ip);
         end_op();
+        free(buf);
         return -ENOTEMPTY;
       }
     }
