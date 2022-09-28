@@ -80,9 +80,9 @@ TEST(log_test, parallel_read_write_test) {
     }
   }
 
-  myfuse_log("failed on %d blocks", failed);
-  myfuse_log("%.3lf memory successfully read and write",
-             (content_sum - failed) / (content_sum * 1.0));
+  myfuse_debug_log("failed on %d blocks", failed);
+  myfuse_debug_log("%.3lf memory successfully read and write",
+                   (content_sum - failed) / (content_sum * 1.0));
   ASSERT_EQ(failed, 0);
 
   start_worker(test_read_worker);

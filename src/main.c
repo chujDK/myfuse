@@ -129,6 +129,6 @@ void* myfuse_init(struct fuse_conn_info* conn, struct fuse_config* config) {
 
   file_init();
 
-  myfuse_log("fs init done; size %d", state->sb.size);
+  myfuse_debug_log("fs init done; size %d", state->sb.size);
   return state;
 }

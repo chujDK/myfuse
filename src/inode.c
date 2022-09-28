@@ -32,7 +32,7 @@ int inode_init(struct superblock* sb) {
 }
 
 static void itable_grow() {
-  myfuse_log("itable_grow: %d -> %d", itable.ninode, itable.ninode * 2);
+  myfuse_debug_log("itable_grow: %d -> %d", itable.ninode, itable.ninode * 2);
   if (!pthread_spin_trylock(&itable.lock)) {
     err_exit("itable_grow called not within itable locked");
   }
@@ -562,7 +562,7 @@ int itrunc2size(struct inode* ip, size_t size) {
   nbytes_aligned           = ROUNDUP(size, BSIZE);
   long long target_blockno = nbytes_aligned / BSIZE;
   long long origin_blockno = ROUNDUP(ip->size, BSIZE) / BSIZE;
-  myfuse_log("%lx truncate to %lx, %lx", ip->size, size, nbytes_aligned);
+  myfuse_debug_log("%lx truncate to %lx, %lx", ip->size, size, nbytes_aligned);
 
   if (target_blockno >= origin_blockno) {
     for (uint i = origin_blockno; i < target_blockno; i++) {
@@ -745,11 +745,11 @@ int stat_inode(struct inode* ip, struct stat* st) {
       st->st_mode = S_IFREG | ip->perm;
       break;
     case T_DEVICE_INODE_MYFUSE:
-      myfuse_log("`inum %d' is device, not supported", ip->inum);
+      myfuse_debug_log("`inum %d' is device, not supported", ip->inum);
       res = -ENOENT;
       break;
     default:
-      myfuse_log("inum `%d' has unknow type", ip->inum);
+      myfuse_debug_log("inum `%d' has unknow type", ip->inum);
       res = -ENOENT;
       break;
   }

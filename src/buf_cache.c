@@ -113,7 +113,7 @@ static struct bcache_buf* bget(uint blockno) {
     }
 
     if (least_recent_buf == 0) {
-      myfuse_log("bget: no buffers, find again..");
+      myfuse_debug_log("bget: no buffers, find again..");
     } else {
       break;
     }

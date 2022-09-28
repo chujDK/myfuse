@@ -112,7 +112,7 @@ int fileread(struct file *f, char *dst, size_t n) {
     nread = inode_read_nbytes_unlocked(f->ip, dst, f->off, n);
     f->off += nread;
   } else {
-    myfuse_log("fileread: unknown file type");
+    myfuse_debug_log("fileread: unknown file type");
     // unreachable
     return -1;
   }
@@ -147,7 +147,7 @@ int myfuse_getattr(const char *path, struct stat *stbuf,
   int res          = 0;
 
   if (ip == NULL) {
-    myfuse_log("`%s' is not exist", path);
+    myfuse_debug_log("`%s' is not exist", path);
     end_op();
     res = -ENOENT;
     return res;
@@ -169,7 +169,7 @@ int myfuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
   begin_op();
   struct inode *dp = ((struct file *)fi->fh)->ip;
   if (dp == NULL) {
-    myfuse_log("`%s' is not exist", path);
+    myfuse_debug_log("`%s' is not exist", path);
     end_op();
     return -ENOENT;
   }
@@ -359,7 +359,7 @@ int myfuse_unlink(const char *path) {
   struct inode *ip = path2inode(path);
   struct inode *dp = path2parentinode(path, name);
   if (ip == NULL) {
-    myfuse_log("`%s' is not exist", path);
+    myfuse_debug_log("`%s' is not exist", path);
     end_op();
     return -ENOENT;
   }
@@ -403,7 +403,7 @@ int myfuse_rmdir(const char *path) {
   struct inode *dp = path2parentinode(path, name);
 
   if (ip == NULL) {
-    myfuse_log("`%s' is not exist", path);
+    myfuse_debug_log("`%s' is not exist", path);
     end_op();
     return -ENOENT;
   }
@@ -420,7 +420,7 @@ int myfuse_rmdir(const char *path) {
     for (int i = 0; i < ip->size; i += sizeof(struct dirent)) {
       struct dirent *de = (struct dirent *)(buf + i);
       if (de->inum != 0) {
-        myfuse_log("myfuse_rmdir: `%s' is not empty", path);
+        myfuse_debug_log("myfuse_rmdir: `%s' is not empty", path);
         free(buf);
         iunlock(ip);
         end_op();

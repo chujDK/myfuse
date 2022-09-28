@@ -149,7 +149,7 @@ void* file_write_worker(void* _range) {
     auto inode = ialloc(T_FILE_INODE_MYFUSE);
     pthread_mutex_lock(&mapping_lock);
     if (inum_got.find(inode->inum) != inum_got.end()) {
-      myfuse_log("inode %d realloced", inode->inum);
+      myfuse_debug_log("inode %d realloced", inode->inum);
     }
     inum_got.insert(inode->inum);
     file_to_inum[file] = inode->inum;
@@ -403,9 +403,9 @@ TEST(inode, parrallel_block_aligned_read_write_test) {
     }
   }
 
-  myfuse_log("failed on %d blocks", failed);
-  myfuse_log("%.3lf memory successfully read and write",
-             (big_file_block - failed) / (big_file_block * 1.0));
+  myfuse_debug_log("failed on %d blocks", failed);
+  myfuse_debug_log("%.3lf memory successfully read and write",
+                   (big_file_block - failed) / (big_file_block * 1.0));
   ASSERT_EQ(failed, 0);
 
   start_worker(block_aligned_read_worker, nwriter, big_file_block);

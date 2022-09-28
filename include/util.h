@@ -5,7 +5,7 @@
 
 void err_exit(const char* msg, ...);
 
-void myfuse_log(const char* msg, ...);
+void myfuse_debug_log(const char* msg, ...);
 
 void myfuse_nonfatal(const char* msg, ...);
 
