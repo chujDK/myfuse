@@ -81,7 +81,7 @@ struct inode {
   short major;
   short minor;
   short nlink;
-  uint size;
+  size_t size;
   uint perm;
   uint addrs[NDIRECT + NSUBDIRECT];
 };

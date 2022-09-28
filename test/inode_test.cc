@@ -277,7 +277,8 @@ TEST(inode, truncate2big_test) {
 TEST(inode, truncate_test) {
   // this test mayno failed it self, but may fail other test by filling all disk
   // with junk
-  for (uint i = 0; i < 20; i++) {
+  // NOTE: change the 2 to larger can help test better
+  for (uint i = 0; i < 2; i++) {
     std::array<char, BSIZE> ones;
     ones.fill(1);
     begin_op();

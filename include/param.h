@@ -5,6 +5,7 @@
 #include "fs.h"
 #include "pthread.h"
 #include "util.h"
+#include <stdlib.h>
 #define BCACHE_HASH_SIZE 29
 
 struct myfuse_state {

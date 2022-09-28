@@ -32,7 +32,7 @@ void err_exit(const char* msg, ...) {
 
 void myfuse_debug_log(const char* msg, ...) {
 #ifdef VERBOSE
-  char buf[128] = "\033[1;92m[+]\033[0m \033[92mmyfuse log:\033[0m ";
+  char buf[128] = "\033[1;92m[+]\033[0m \033[92mmyfuse debug log:\033[0m ";
   va_list arg;
   va_start(arg, msg);
   strncat(buf, msg, 127);

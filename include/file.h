@@ -37,6 +37,9 @@ int myfuse_create(const char* path, mode_t mode, struct fuse_file_info* fi);
 
 int myfuse_chmod(const char* path, mode_t mode, struct fuse_file_info* fi);
 
+off_t myfuse_lseek(const char* path, off_t off, int whence,
+                   struct fuse_file_info* fi);
+
 void file_init();
 
 enum FD_TYPE {
@@ -50,7 +53,7 @@ struct file {
   int readable;
   int writable;
   struct inode* ip;
-  uint off;
+  off_t off;
 };
 struct file;
 struct file* filealloc();

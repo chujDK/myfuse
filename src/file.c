@@ -563,3 +563,33 @@ int myfuse_chmod(const char *path, mode_t mode, struct fuse_file_info *fi) {
 
   return 0;
 }
+
+off_t myfuse_lseek(const char *path, off_t off, int whence,
+                   struct fuse_file_info *fi) {
+  (void)path;
+  struct file *f = (struct file *)fi->fh;
+  off_t result;
+  DEBUG_TEST(assert(f != NULL););
+
+  ilock(f->ip);
+  // FIXME: check if overflow will occur
+  switch (whence) {
+    case SEEK_SET:
+      f->off = off;
+      result = f->off;
+      break;
+    case SEEK_CUR:
+      f->off += off;
+      result = f->off;
+      break;
+    case SEEK_END:
+      f->off = f->ip->size + off;
+      result = f->off;
+      break;
+    default:
+      result = -EINVAL;
+      break;
+  }
+  iunlock(f->ip);
+  return result;
+}

@@ -62,6 +62,7 @@ static const struct fuse_operations myfuse_oper = {
     .release    = myfuse_release,
     .releasedir = myfuse_releasedir,
     .chmod      = myfuse_chmod,
+    .lseek      = myfuse_lseek,
 };
 
 #ifdef VERBOSE
