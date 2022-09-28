@@ -371,8 +371,10 @@ int myfuse_unlink(const char *path) {
 
   if (ip->nlink == 0) {
     // dangling symbolic link
+    iunlockput(dp);
+    iunlockput(ip);
     end_op();
-    return -ENONET;
+    return -ENOENT;
   }
 
   ip->nlink--;
@@ -516,7 +518,7 @@ int myfuse_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
   ilock(file_inode);
   file_inode->nlink++;
   file_inode->perm = mode & 0777;
-  iupdate(dir_inode);
+  iupdate(file_inode);
   ilock(dir_inode);
   dirlink(dir_inode, filename, file_inode->inum);
   iunlockput(dir_inode);

@@ -43,7 +43,9 @@ struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
       if (poff) {
         *poff = off;
       }
-      return iget(de->inum);
+      uint inum = de->inum;
+      free(buf);
+      return iget(inum);
     }
   }
 
