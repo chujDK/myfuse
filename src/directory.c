@@ -85,7 +85,7 @@ int dirlink(struct inode* dp, const char* name, uint inum) {
   // this is a userland program, we can do this to save time
   char* buf = NULL;
   if (dp->size) {
-    char* buf = malloc(dp->size);
+    buf = malloc(dp->size);
     if (inode_read_nbytes_locked(dp, buf, dp->size, 0) != dp->size) {
       free(buf);
       err_exit("dirlink: read failed");
