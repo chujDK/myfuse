@@ -66,7 +66,6 @@ static const struct fuse_operations myfuse_oper = {
     .rename     = myfuse_rename,
 };
 
-#ifdef VERBOSE
 void SIGSEVG_handler(int sig) {
   void* array[10];
   size_t size;
@@ -79,9 +78,6 @@ void SIGSEVG_handler(int sig) {
   backtrace_symbols_fd(array, size, STDERR_FILENO);
   exit(1);
 }
-#else
-void SIGSEVG_handler(int){};
-#endif
 
 int main(int argc, char* argv[]) {
   int ret;
