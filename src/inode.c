@@ -124,12 +124,15 @@ void ilock(struct inode* ip) {
     struct bcache_buf* bp = logged_read(IBLOCK(ip->inum));
     struct dinode* dip    = (struct dinode*)bp->data + ip->inum % IPB;
 
-    ip->type  = dip->type;
-    ip->major = dip->major;
-    ip->minor = dip->minor;
-    ip->nlink = dip->nlink;
-    ip->size  = dip->size;
-    ip->perm  = dip->perm;
+    ip->type         = dip->type;
+    ip->major        = dip->major;
+    ip->minor        = dip->minor;
+    ip->nlink        = dip->nlink;
+    ip->size         = dip->size;
+    ip->perm         = dip->perm;
+    ip->st_atimespec = dip->st_atimespec;
+    ip->st_mtimespec = dip->st_mtimespec;
+    ip->st_ctimespec = dip->st_ctimespec;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     logged_relse(bp);
     ip->valid = 1;
@@ -161,14 +164,18 @@ void iupdate(struct inode* ip) {
   struct bcache_buf* bp;
   struct dinode* dip;
 
-  bp         = logged_read(IBLOCK(ip->inum));
-  dip        = (struct dinode*)bp->data + ip->inum % IPB;
-  dip->type  = ip->type;
-  dip->major = ip->major;
-  dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
-  dip->size  = ip->size;
-  dip->perm  = ip->perm;
+  bp                = logged_read(IBLOCK(ip->inum));
+  dip               = (struct dinode*)bp->data + ip->inum % IPB;
+  dip->type         = ip->type;
+  dip->major        = ip->major;
+  dip->minor        = ip->minor;
+  dip->nlink        = ip->nlink;
+  dip->size         = ip->size;
+  dip->perm         = ip->perm;
+  dip->st_atimespec = ip->st_atimespec;
+  dip->st_mtimespec = ip->st_mtimespec;
+  get_current_timespec(&ip->st_ctimespec);
+  dip->st_ctimespec = ip->st_ctimespec;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   logged_write(bp);
   logged_relse(bp);
@@ -625,6 +632,8 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
   logged_write(bp);
   logged_relse(bp);
   if (nbytes <= n_left) {
+    get_current_timespec(&ip->st_atimespec);
+    ip->st_mtimespec = ip->st_atimespec;
     iupdate(ip);
     return nbytes;
   }
@@ -658,6 +667,9 @@ long inode_write_nbytes_locked(struct inode* ip, const char* data,
     logged_write(bp);
     logged_relse(bp);
   }
+
+  get_current_timespec(&ip->st_atimespec);
+  ip->st_mtimespec = ip->st_atimespec;
   iupdate(ip);
   return n_write;
 }
@@ -680,6 +692,7 @@ long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
   memmove(data, bp->data + from_start, min(n_left, nbytes));
   logged_relse(bp);
   if (nbytes <= n_left) {
+    get_current_timespec(&ip->st_atimespec);
     iupdate(ip);
     return nbytes;
   }
@@ -709,6 +722,7 @@ long inode_read_nbytes_locked(struct inode* ip, char* data, size_t nbytes,
   }
   iupdate(ip);
 
+  get_current_timespec(&ip->st_atimespec);
   return n_read;
 }
 
@@ -738,6 +752,9 @@ int stat_inode(struct inode* ip, struct stat* st) {
   st->st_size    = ip->size;
   st->st_ino     = ip->inum;
   st->st_blksize = BSIZE;
+  st->st_atim    = ip->st_atimespec;
+  st->st_ctim    = ip->st_ctimespec;
+  st->st_mtim    = ip->st_mtimespec;
   switch (ip->type) {
     case T_DIR_INODE_MYFUSE:
       st->st_mode = S_IFDIR | ip->perm;

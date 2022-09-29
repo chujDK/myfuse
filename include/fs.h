@@ -26,7 +26,7 @@ struct superblock {
 };
 #define SUPERBLOCK_ID 1
 
-#define NDIRECT 23
+#define NDIRECT 43
 #define NINDIRECT1 (BSIZE / sizeof(uint))
 #define NINDIRECT2 ((BSIZE / sizeof(uint)) * (BSIZE / sizeof(uint)))
 #define NINDIRECT3 \
@@ -42,13 +42,18 @@ struct superblock {
 struct dinode {
   short type;  // File type
   // currently we don't consider the device case
-  short major;             // Major device number (T_DEVICE_INODE_MYFUSE only)
-  short minor;             // Minor device number (T_DEVICE_INODE_MYFUSE only)
-  short nlink;             // Number of links to inode in file system
-  size_t size;             // Size of file (bytes)
-  uint perm;               // permission
-  uint addrs[NBLOCKADDR];  // Data block addresses  short type;
+  short major;  // Major device number (T_DEVICE_INODE_MYFUSE only)
+  short minor;  // Minor device number (T_DEVICE_INODE_MYFUSE only)
+  short nlink;  // Number of links to inode in file system
+  size_t size;  // Size of file (bytes)
+  struct timespec st_atimespec; /* Nscecs of last access.  */
+  struct timespec st_mtimespec; /* Nsecs of last modification.  */
+  struct timespec st_ctimespec; /* Nsecs of last status change.  */
+  uint perm;                    // permission
+  uint addrs[NBLOCKADDR];       // Data block addresses  short type;
 };
+
+_Static_assert(BSIZE % sizeof(struct dinode) == 0, "dinode not aligned!");
 
 // Inodes per block.
 #define IPB (BSIZE / sizeof(struct dinode))

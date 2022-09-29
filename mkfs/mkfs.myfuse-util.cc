@@ -8,7 +8,7 @@ void init_super_block(uint disk_size_in_sector_block) {
   const uint disk_size     = disk_size_in_sector_block;
   const uint nlog          = NLOG;
   const uint nbitmap       = (ROUNDUP(disk_size, BPB)) / BPB;
-  const uint ninode_blocks = ceil(disk_size / 100) + 1;
+  const uint ninode_blocks = ceil(disk_size / 50) + 1;
   const uint ninodes       = ninode_blocks * IPB;
   const uint nmeta_blocks  = 2 + nlog + ninode_blocks + nbitmap;
   const uint nblocks       = disk_size - nmeta_blocks;
@@ -23,9 +23,10 @@ void init_super_block(uint disk_size_in_sector_block) {
 
   const double ONEK = 1024.0;
   myfuse_log("this disk can have about %.2lf GiB storage",
-             ((nblocks * BSIZE) / ONEK / ONEK / ONEK) * 0.98);
+             ((nblocks * BSIZE) / ONEK / ONEK / ONEK) * 0.96);
   printf(
-      "nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) "
+      "nmeta %d (boot, super, log blocks %u, inode blocks %u, bitmap blocks "
+      "%u)\n"
       "blocks %d total %d\n",
       nmeta_blocks, nlog, ninode_blocks, nbitmap, nblocks, disk_size);
   printf("%ld bytes per-block\n", BSIZE);

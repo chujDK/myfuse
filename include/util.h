@@ -29,3 +29,5 @@ struct myfuse_state* get_myfuse_state()
 #else
 #define DEBUG_TEST(statements)
 #endif
+
+void get_current_timespec(struct timespec* t);

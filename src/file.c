@@ -340,6 +340,10 @@ int myfuse_mkdir(const char *path, mode_t mode) {
   iunlockput(dp);
 
   ip->nlink = 1;
+
+  get_current_timespec(&ip->st_atimespec);
+  ip->st_ctimespec = ip->st_mtimespec = ip->st_atimespec;
+
   iupdate(ip);
   iunlockput(ip);
 
@@ -524,6 +528,11 @@ int myfuse_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
   ilock(file_inode);
   file_inode->nlink++;
   file_inode->perm = mode & 0777;
+
+  get_current_timespec(&file_inode->st_atimespec);
+  file_inode->st_ctimespec = file_inode->st_mtimespec =
+      file_inode->st_atimespec;
+
   iupdate(file_inode);
   ilock(dir_inode);
   dirlink(dir_inode, filename, file_inode->inum);

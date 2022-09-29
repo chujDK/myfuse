@@ -68,3 +68,5 @@ void myfuse_nonfatal(const char* msg, ...) {
 struct myfuse_state* get_myfuse_state() {
   return (struct myfuse_state*)fuse_get_context()->private_data;
 }
+
+void get_current_timespec(struct timespec* t) { timespec_get(t, TIME_UTC); }

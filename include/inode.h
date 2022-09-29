@@ -82,6 +82,9 @@ struct inode {
   short minor;
   short nlink;
   size_t size;
+  struct timespec st_atimespec; /* Nscecs of last access.  */
+  struct timespec st_mtimespec; /* Nsecs of last modification.  */
+  struct timespec st_ctimespec; /* Nsecs of last status change.  */
   uint perm;
   uint addrs[NDIRECT + NSUBDIRECT];
 };
