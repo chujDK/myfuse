@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
+#include <linux/fs.h>
 #include "log.h"
 
 #define NFILE_INIT 50
@@ -599,4 +600,71 @@ off_t myfuse_lseek(const char *path, off_t off, int whence,
   }
   iunlock(f->ip);
   return result;
+}
+
+int myfuse_rename(const char *from, const char *target, unsigned int flags) {
+  char target_name[DIRSIZE];
+  char from_name[DIRSIZE];
+  struct dirent zero_de;
+
+  memset(&zero_de, 0, sizeof(zero_de));
+
+  begin_op();
+  struct inode *target_ip = path2inode(target);
+  struct inode *target_dp = path2parentinode(target, target_name);
+  struct inode *from_ip   = path2inode(from);
+  struct inode *from_dp   = path2parentinode(from, from_name);
+  if ((target_ip == NULL && target_dp == NULL) || from_ip == NULL ||
+      from_dp == NULL) {
+    return -ENOENT;
+  }
+
+  int res = 0;
+  ilock(from_ip);
+  ilock(from_dp);
+  // unlink the source
+  uint poff;
+  iput(dirlookup(from_dp, from_name, &poff));
+  // unlink from the from_dp
+  inode_write_nbytes_locked(from_dp, (char *)&zero_de, sizeof(zero_de), poff);
+  iunlock(from_dp);
+  iunlock(from_ip);
+
+  if (target_ip == NULL) {
+    ilock(target_dp);
+    dirlink(target_dp, target_name, from_ip->inum);
+    iunlock(target_dp);
+  } else {
+    // target exists
+    if (target_ip->type == T_DIR_INODE_MYFUSE) {
+      // target is a directory
+      // link under the directory
+      ilock(target_ip);
+      dirlink(target_ip, from_name, from_ip->inum);
+      iunlock(target_ip);
+    } else {
+      if (flags & RENAME_EXCHANGE) {
+        DEBUG_TEST(assert(target_dp == NULL););
+        ilock(target_dp);
+        ilock(target_ip);
+
+        // unlink from target_dp
+        iput(dirlookup(target_dp, target_name, &poff));
+        inode_write_nbytes_locked(target_dp, (char *)&zero_de, sizeof(zero_de),
+                                  poff);
+
+        dirlink(target_dp, from_name, from_ip->inum);
+        dirlink(from_dp, from_name, target_ip->inum);
+
+        iunlock(target_ip);
+        iunlock(target_dp);
+      } else if (flags & RENAME_NOREPLACE) {
+        // just end op
+        res = -EEXIST;
+      }
+    }
+  }
+
+  end_op();
+  return res;
 }

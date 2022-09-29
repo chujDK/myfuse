@@ -40,6 +40,8 @@ int myfuse_chmod(const char* path, mode_t mode, struct fuse_file_info* fi);
 off_t myfuse_lseek(const char* path, off_t off, int whence,
                    struct fuse_file_info* fi);
 
+int myfuse_rename(const char* from, const char* to, unsigned int flags);
+
 void file_init();
 
 enum FD_TYPE {
