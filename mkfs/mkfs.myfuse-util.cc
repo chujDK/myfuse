@@ -45,6 +45,8 @@ void add_rootinode() {
   ilock(ip);
   ip->nlink = 1;
   ip->type  = T_DIR_INODE_MYFUSE;
+  get_current_timespec(&ip->st_atimespec);
+  ip->st_ctimespec = ip->st_mtimespec = ip->st_atimespec;
   iupdate(ip);
   // fuse need no . or ..
   //  dirlink(ip, ".", ip->inum);
