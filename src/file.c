@@ -433,6 +433,7 @@ int myfuse_rmdir(const char *path) {
         return -ENOTEMPTY;
       }
     }
+    free(buf);
     iunlock(ip);
   }
 
