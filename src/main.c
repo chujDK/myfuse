@@ -64,6 +64,7 @@ static const struct fuse_operations myfuse_oper = {
     .chmod      = myfuse_chmod,
     .lseek      = myfuse_lseek,
     .rename     = myfuse_rename,
+    .statfs     = myfuse_statfs,
 };
 
 void SIGSEVG_handler(int sig) {

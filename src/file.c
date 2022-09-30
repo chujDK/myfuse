@@ -677,3 +677,21 @@ int myfuse_rename(const char *from, const char *target, unsigned int flags) {
   end_op();
   return res;
 }
+
+#include "block_allocator.h"
+
+int myfuse_statfs(const char *path, struct statvfs *buf) {
+  buf->f_blocks = MYFUSE_STATE->sb.nblocks;
+  buf->f_bsize  = BSIZE;
+
+  fsblkcnt_t free_blocks = 0;
+  for (int i = 0; i < MYFUSE_STATE->sb.size; i++) {
+    if (bmap_block_statue_get(i) == 0) {
+      free_blocks++;
+    }
+  }
+  buf->f_bfree   = free_blocks;
+  buf->f_fsid    = FSMAGIC;
+  buf->f_namemax = DIRSIZE;
+  return 0;
+}
