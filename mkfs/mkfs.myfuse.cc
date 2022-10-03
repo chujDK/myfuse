@@ -24,14 +24,15 @@ int main(int argc, char* argv[]) {
 
   if (argc != 2) {
     err_exit(
-        "Usage: mkfs /dev/<disk name>\n"
-        "\tNote: the disk will be treated as sector size of 512\n");
+        "Usage: %s /dev/<disk name>\n"
+        "\tNote: the disk will be treated as sector size of 512\n",
+        argv[0]);
   }
 
   disk_name = argv[1];
 
-  assert(BSIZE % sizeof(struct dinode) == 0);
-  assert(BSIZE % sizeof(struct dirent) == 0);
+  static_assert(BSIZE % sizeof(struct dinode) == 0);
+  static_assert(BSIZE % sizeof(struct dirent) == 0);
 
   myfuse_log(
       "This program will format the disk %s\n"

@@ -42,6 +42,8 @@ off_t myfuse_lseek(const char* path, off_t off, int whence,
 
 int myfuse_rename(const char* from, const char* to, unsigned int flags);
 
+int myfuse_statfs(const char* path, struct statvfs* buf);
+
 void file_init();
 
 enum FD_TYPE {

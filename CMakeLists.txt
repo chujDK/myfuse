@@ -54,3 +54,4 @@ target_include_directories(mkfs_lib PUBLIC ${CMAKE_SOURCE_DIR}/include PUBLIC ${
 
 add_subdirectory(mkfs)
 add_subdirectory(test)
+add_subdirectory(diagnostic)
