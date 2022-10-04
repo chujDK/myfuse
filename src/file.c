@@ -418,8 +418,8 @@ int myfuse_rmdir(const char *path) {
     return -ENOENT;
   }
 
+  ilock(ip);
   if (ip->size != 0) {
-    ilock(ip);
     char *buf = malloc(ip->size);
     if (inode_read_nbytes_locked(ip, buf, ip->size, 0) != ip->size) {
       iunlock(ip);
@@ -439,11 +439,9 @@ int myfuse_rmdir(const char *path) {
       }
     }
     free(buf);
-    iunlock(ip);
   }
 
   ilock(dp);
-  ilock(ip);
   ip->nlink--;
   if (ip->nlink == 0) {
     if (dirlookup(dp, name, &poff) != NULL) {
@@ -452,8 +450,8 @@ int myfuse_rmdir(const char *path) {
   }
   iupdate(ip);
 
-  iunlockput(ip);
   iunlockput(dp);
+  iunlockput(ip);
   end_op();
 
   return res;
