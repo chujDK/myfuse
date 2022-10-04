@@ -53,8 +53,6 @@ struct dinode {
   uint addrs[NBLOCKADDR];       // Data block addresses  short type;
 };
 
-_Static_assert(BSIZE % sizeof(struct dinode) == 0, "dinode not aligned!");
-
 // Inodes per block.
 #define IPB (BSIZE / sizeof(struct dinode))
 
