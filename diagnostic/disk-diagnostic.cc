@@ -38,7 +38,7 @@ void print_direct_map(uint* addrs, size_t n) {
     if (addrs[i]) {
       putchar(comma);
       comma = ',';
-      printf(R"({"%d": %u})", i, addrs[i]);
+      printf(R"({"index":%d,"blockno": %u})", i, addrs[i]);
       block_used.insert(addrs[i]);
     }
   }
