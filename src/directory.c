@@ -16,18 +16,17 @@ struct inode* dirlookup(struct inode* dp, const char* name, uint* poff) {
   struct dirent* de;
   char* buf = malloc(dp->size);
 
-#ifdef DEBUG
-  if (dp->type != T_DIR_INODE_MYFUSE) {
-    free(buf);
-    err_exit("dirlookup: file is not a dir");
-  }
+  DEBUG_TEST(
+      if (dp->type != T_DIR_INODE_MYFUSE) {
+        free(buf);
+        err_exit("dirlookup: file is not a dir");
+      }
 
-  // pthread_mutex_trylock: return 0 if not locked
-  if (!pthread_mutex_trylock(&dp->lock)) {
-    free(buf);
-    err_exit("dirlookup: dp is not locked");
-  }
-#endif
+      // pthread_mutex_trylock: return 0 if not locked
+      if (!pthread_mutex_trylock(&dp->lock)) {
+        free(buf);
+        err_exit("dirlookup: dp is not locked");
+      });
 
   if (inode_read_nbytes_locked(dp, buf, dp->size, 0) != dp->size) {
     free(buf);
@@ -58,22 +57,21 @@ int dirlink(struct inode* dp, const char* name, uint inum) {
   struct dirent* de = NULL;
   struct inode* ip;
 
-#ifdef DEBUG
-  // pthread_mutex_trylock: return 0 if not locked
-  if (!pthread_mutex_trylock(&dp->lock)) {
-    err_exit("dirlink called with unlocked inode");
-  }
+  DEBUG_TEST(
+      // pthread_mutex_trylock: return 0 if not locked
+      if (!pthread_mutex_trylock(&dp->lock)) {
+        err_exit("dirlink called with unlocked inode");
+      }
 
-  // test the inode is a directory
-  if (dp->type != T_DIR_INODE_MYFUSE) {
-    err_exit("dirlink called with non-directory inode");
-  }
+      // test the inode is a directory
+      if (dp->type != T_DIR_INODE_MYFUSE) {
+        err_exit("dirlink called with non-directory inode");
+      }
 
-  // test the directory size
-  if (dp->size % sizeof(struct dirent) != 0) {
-    err_exit("dirlink called with directory inode with invalid size");
-  }
-#endif
+      // test the directory size
+      if (dp->size % sizeof(struct dirent) != 0) {
+        err_exit("dirlink called with directory inode with invalid size");
+      });
 
   // Check that name is not present.
   if ((ip = dirlookup(dp, name, 0)) != 0) {

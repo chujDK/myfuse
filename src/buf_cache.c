@@ -152,9 +152,9 @@ struct bcache_buf* bread(uint blockno) {
 }
 
 int bwrite(struct bcache_buf* b) {
-  if (!pthread_mutex_trylock(&b->lock)) {
+  DEBUG_TEST(if (!pthread_mutex_trylock(&b->lock)) {
     err_exit("bwrite called with unlocked buf");
-  }
+  });
 
   return write_block_raw(b->blockno, b->data);
 }
@@ -168,9 +168,9 @@ static inline uint64_t current_timestamp() {
 }
 
 void brelse(struct bcache_buf* b) {
-  if (!pthread_mutex_trylock(&b->lock)) {
+  DEBUG_TEST(if (!pthread_mutex_trylock(&b->lock)) {
     err_exit("brelse called with unlocked buf");
-  }
+  });
 
   pthread_mutex_unlock(&b->lock);
   int hashid                    = bcache_hash(b->blockno);

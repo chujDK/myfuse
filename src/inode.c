@@ -148,10 +148,11 @@ void ilock(struct inode* ip) {
 }
 
 void iunlock(struct inode* ip) {
-  // pthread_mutex_trylock: return 0 if not locked
-  if (ip == 0 || !pthread_mutex_trylock(&ip->lock) || ip->ref < 1) {
-    err_exit("iunlock: got invalid inode");
-  }
+  DEBUG_TEST(
+      // pthread_mutex_trylock: return 0 if not locked
+      if (ip == 0 || !pthread_mutex_trylock(&ip->lock) || ip->ref < 1) {
+        err_exit("iunlock: got invalid inode");
+      });
 
   pthread_mutex_unlock(&ip->lock);
 }
