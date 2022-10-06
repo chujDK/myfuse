@@ -98,48 +98,6 @@ int filestat(struct file *f, struct stat *stbuf) {
   }
 }
 
-int fileread(struct file *f, char *dst, size_t n) {
-  int nread = 0;
-
-  if (f->readable == 0) {
-    return -1;
-  }
-
-  if (f->ip->type == T_FILE_INODE_MYFUSE) {
-    return -EISDIR;
-  }
-
-  if (f->type == FD_INODE) {
-    nread = inode_read_nbytes_unlocked(f->ip, dst, f->off, n);
-    f->off += nread;
-  } else {
-    myfuse_debug_log("fileread: unknown file type");
-    // unreachable
-    return -1;
-  }
-
-  return nread;
-}
-
-int filewrite(struct file *f, const char *src, size_t n) {
-  int nwrite = 0;
-
-  if (f->writable == 0) {
-    return -1;
-  }
-
-  if (f->ip->type == T_FILE_INODE_MYFUSE) {
-    return -EISDIR;
-  }
-
-  if (f->type == FD_INODE) {
-    nwrite = inode_write_nbytes_unlocked(f->ip, src, f->off, n);
-    f->off += nwrite;
-  }
-
-  return nwrite;
-}
-
 int myfuse_getattr(const char *path, struct stat *stbuf,
                    struct fuse_file_info *fi) {
   (void)fi;
@@ -271,10 +229,8 @@ int myfuse_open(const char *path, struct fuse_file_info *fi) {
     }
   }
   ilock(file_inode);
-  if (file_inode->type == T_DIR_INODE_MYFUSE) {
-    iunlockput(file_inode);
-    return -EISDIR;
-  }
+  // file type need not be checked. fuse will use getattr to check
+  // open will only treat file
   struct file *file = filealloc();
   file->type        = FD_INODE;
   file->ip          = file_inode;
@@ -401,6 +357,8 @@ int myfuse_unlink(const char *path) {
 }
 
 int myfuse_rmdir(const char *path) {
+  // we don't need to check if the path is a directory
+  // fuse will first use getattr to check it
   int res = 0;
   char name[DIRSIZE];
   struct dirent zero_de;
