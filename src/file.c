@@ -285,7 +285,6 @@ int myfuse_mkdir(const char *path, mode_t mode) {
   struct inode *dp = path2parentinode(path, name);
 
   struct inode *ip = ialloc(T_DIR_INODE_MYFUSE);
-  ip->nlink++;
   ilock(ip);
 
   ilock(dp);
@@ -296,6 +295,7 @@ int myfuse_mkdir(const char *path, mode_t mode) {
   iunlockput(dp);
 
   ip->nlink = 1;
+  ip->perm  = mode;
 
   get_current_timespec(&ip->st_atimespec);
   ip->st_ctimespec = ip->st_mtimespec = ip->st_atimespec;
