@@ -1,0 +1,3 @@
+[submodule "diagnostic/util/diag-visual"]
+	path = diagnostic/util/diag-visual
+	url = https://github.com/chujDK/myfuse-disk-visualizer.git

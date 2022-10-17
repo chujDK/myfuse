@@ -291,6 +291,8 @@ int myfuse_mkdir(const char *path, mode_t mode) {
   if (dirlink(dp, name, ip->inum) != 0) {
     res = -EEXIST;
     iunlockput(ip);
+    end_op();
+    return res;
   }
   iunlockput(dp);
 
@@ -318,12 +320,12 @@ int myfuse_unlink(const char *path) {
   memset(&zero_de, 0, sizeof(zero_de));
 
   struct inode *ip = path2inode(path);
-  struct inode *dp = path2parentinode(path, name);
   if (ip == NULL) {
     myfuse_debug_log("`%s' is not exist", path);
     end_op();
     return -ENOENT;
   }
+  struct inode *dp = path2parentinode(path, name);
 
   DEBUG_TEST(assert(dp != NULL););
 
@@ -368,7 +370,6 @@ int myfuse_rmdir(const char *path) {
 
   begin_op();
   struct inode *ip = path2inode(path);
-  struct inode *dp = path2parentinode(path, name);
 
   if (ip == NULL) {
     myfuse_debug_log("`%s' is not exist", path);
@@ -380,7 +381,7 @@ int myfuse_rmdir(const char *path) {
   if (ip->size != 0) {
     char *buf = malloc(ip->size);
     if (inode_read_nbytes_locked(ip, buf, ip->size, 0) != ip->size) {
-      iunlock(ip);
+      iunlockput(ip);
       end_op();
       free(buf);
       err_exit("myfuse_rmdir: inode_read_nbytes_unlocked failed to read");
@@ -390,7 +391,7 @@ int myfuse_rmdir(const char *path) {
       struct dirent *de = (struct dirent *)(buf + i);
       if (de->inum != 0) {
         myfuse_debug_log("myfuse_rmdir: `%s' is not empty", path);
-        iunlock(ip);
+        iunlockput(ip);
         end_op();
         free(buf);
         return -ENOTEMPTY;
@@ -399,6 +400,7 @@ int myfuse_rmdir(const char *path) {
     free(buf);
   }
 
+  struct inode *dp = path2parentinode(path, name);
   ilock(dp);
   ip->nlink--;
   if (ip->nlink == 0) {
@@ -628,6 +630,19 @@ int myfuse_rename(const char *from, const char *target, unsigned int flags) {
         res = -EEXIST;
       }
     }
+  }
+
+  if (target_ip != NULL) {
+    iput(target_ip);
+  }
+  if (target_dp != NULL) {
+    iput(target_dp);
+  }
+  if (from_ip != NULL) {
+    iput(from_ip);
+  }
+  if (from_dp != NULL) {
+    iput(from_dp);
   }
 
   end_op();
